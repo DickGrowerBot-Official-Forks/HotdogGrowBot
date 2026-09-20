@@ -30,6 +30,10 @@ impl <T> Count<T> {
     pub const fn value(&self) -> u64 {
         self.value
     }
+
+    pub const fn is_zero(&self) -> bool {
+        self.value == 0
+    }
 }
 
 // The rest of what `#[domain_type]` would give a wrapper over a primitive. The macro can't be used

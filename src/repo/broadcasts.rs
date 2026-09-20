@@ -39,15 +39,50 @@ pub struct ScheduledBroadcast {
     /// Telegram id so that reading them back needs no second trip through `Chats`.
     pub internal_chat_id: InternalChatId,
     pub shrink_date: NaiveDate,
-    /// When the shrink that owes this summary was committed, which is the summary's age.
-    pub created_at: DateTime<Utc>,
     /// Attempts that have already failed, which is what the back-off is computed from.
     pub attempts: AttemptsCount,
     /// The language a previous attempt settled on, if there was one.
     pub lang_code: Option<SupportedLanguage>,
 }
 
+/// The summaries one statement finished as expired.
+#[derive(Clone, Copy, Debug)]
+pub struct ExpiredBroadcasts {
+    pub count: Count<ScheduledBroadcast>,
+    /// The day the oldest of them belonged to; `None` when there were none.
+    pub oldest: Option<NaiveDate>,
+}
+
 repository!(ScheduledBroadcasts,
+    /// Finishes up to `limit` pending summaries of an earlier day as expired, in one statement,
+    /// without handing any of them to the worker. Today's rows are left alone, so the run that
+    /// queues them may call this first.
+    ///
+    /// Rows a concurrent claim holds are skipped rather than waited for; they are the claim's to
+    /// finish.
+    #[autometrics]
+    #[tracing::instrument(skip_all, fields(limit = %limit))]
+    pub async fn expire_stale(&self, limit: Limit) -> anyhow::Result<ExpiredBroadcasts> {
+        let row = sqlx::query!(
+            r#"WITH expired AS (
+                    UPDATE Scheduled_Shrink_Broadcasts SET state = 'expired', finished_at = current_timestamp
+                    WHERE id IN (
+                        SELECT id FROM Scheduled_Shrink_Broadcasts
+                        WHERE finished_at IS NULL AND shrink_date < current_date
+                        LIMIT $1
+                        FOR UPDATE SKIP LOCKED
+                    )
+                    RETURNING shrink_date
+                )
+                SELECT count(*) AS "count!: Count<ScheduledBroadcast>", min(shrink_date) AS oldest FROM expired"#,
+            limit as Limit
+        )
+            .fetch_one(&self.pool)
+            .await
+            .context("couldn't expire the superseded shrink summaries")?;
+        Ok(ExpiredBroadcasts { count: row.count, oldest: row.oldest })
+    },
+
     /// Takes up to `limit` summaries whose time has come, leasing them until `lease_until`.
     ///
     /// The lease is what makes the claim exclusive: the row's lock lives only as long as this one
@@ -71,7 +106,7 @@ repository!(ScheduledBroadcasts,
                 RETURNING b.id AS "id: ScheduledBroadcastId",
                           (SELECT c.chat_id FROM Chats c WHERE c.id = b.chat_id) AS "chat_id: TelegramChatId",
                           b.chat_id AS "internal_chat_id: InternalChatId",
-                          b.shrink_date, b.created_at, b.attempts AS "attempts!: AttemptsCount",
+                          b.shrink_date, b.attempts AS "attempts!: AttemptsCount",
                           b.lang_code AS "lang_code: SupportedLanguage""#,
             limit as Limit, lease_until
         )
@@ -93,7 +128,6 @@ repository!(ScheduledBroadcasts,
                 chat_id,
                 internal_chat_id: row.internal_chat_id,
                 shrink_date: row.shrink_date,
-                created_at: row.created_at,
                 attempts: row.attempts,
                 lang_code: row.lang_code,
             });

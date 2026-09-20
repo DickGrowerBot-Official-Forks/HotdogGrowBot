@@ -82,6 +82,15 @@ pub struct ScheduledDeletion {
     pub attempts: AttemptsCount,
 }
 
+/// The messages of one group and kind that one statement finished as expired.
+#[derive(Clone, Copy, Debug)]
+pub struct ExpiredDeletions {
+    pub group: MessageGroup,
+    pub kind: MessageKind,
+    pub count: Count<ScheduledDeletion>,
+    pub oldest: DateTime<Utc>,
+}
+
 impl DeletionTarget {
     /// The three columns a target is stored in, in the order [`ScheduledDeletions::schedule`]
     /// binds them.
@@ -146,6 +155,39 @@ repository!(ScheduledDeletions,
             .await
             .context("couldn't schedule the deletion of the messages")?;
         Ok(())
+    },
+
+    /// Finishes up to `limit` pending chat messages created before `created_before` as expired, in
+    /// one statement, and says how many went per group and kind. Inline messages are left alone:
+    /// they are edited rather than deleted, and no age limit applies to that.
+    ///
+    /// Rows a concurrent claim holds are skipped rather than waited for; they are the claim's to
+    /// finish.
+    #[autometrics]
+    #[tracing::instrument(skip_all, fields(limit = %limit))]
+    pub async fn expire_stale(&self, created_before: DateTime<Utc>, limit: Limit) -> anyhow::Result<Vec<ExpiredDeletions>> {
+        let rows = sqlx::query!(
+            r#"WITH expired AS (
+                    UPDATE Scheduled_Message_Deletions SET state = 'expired', finished_at = current_timestamp
+                    WHERE id IN (
+                        SELECT id FROM Scheduled_Message_Deletions
+                        WHERE finished_at IS NULL AND inline_message_id IS NULL AND created_at < $1
+                        LIMIT $2
+                        FOR UPDATE SKIP LOCKED
+                    )
+                    RETURNING message_group, message_kind, created_at
+                )
+                SELECT message_group AS "group!: MessageGroup", message_kind AS "kind!: MessageKind",
+                       count(*) AS "count!: Count<ScheduledDeletion>", min(created_at) AS "oldest!"
+                FROM expired GROUP BY message_group, message_kind"#,
+            created_before, limit as Limit
+        )
+            .fetch_all(&self.pool)
+            .await
+            .context("couldn't expire the stale deletions")?;
+        Ok(rows.into_iter()
+            .map(|row| ExpiredDeletions { group: row.group, kind: row.kind, count: row.count, oldest: row.oldest })
+            .collect())
     },
 
     /// Takes up to `limit` messages whose time has come, leasing them until `lease_until`.

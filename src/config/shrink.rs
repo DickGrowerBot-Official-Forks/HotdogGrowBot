@@ -17,6 +17,10 @@ pub struct DailyShrinkConfig {
     /// before there was a knob for it. Nothing waits on this job, so the rest costs only a longer
     /// run — and buys back the connections the chats being answered at midnight are queueing for.
     pub batch_delay: Duration,
+    /// How many leftover summaries one statement of the nightly cleanup finishes as expired. It
+    /// bounds the rows that statement locks and the time it may spend inside `statement_timeout`,
+    /// not how much gets cleared: the cleanup repeats until the queue is empty.
+    pub expiry_batch_size: Limit,
     pub broadcast: BroadcastConfig,
 }
 
@@ -45,9 +49,6 @@ pub struct BroadcastConfig {
     pub max_retry_delay: Duration,
     /// How many attempts a summary gets before the row is marked `failed` and left alone.
     pub max_attempts: AttemptsCount,
-    /// How old a summary may get before it stops being worth sending. Yesterday's list of shrinks
-    /// is still news in a chat that reads once a day; last week's is noise.
-    pub max_age: Duration,
     /// How long a finished row is kept before the cleaning process removes it. Zero keeps them for
     /// ever, which is what makes the queue's own history readable.
     pub retention: Duration,
@@ -61,7 +62,7 @@ impl DailyShrinkConfig {
     /// The daily shrink runs only when both knobs are meaningfully set: a positive ratio to lose
     /// and a positive grace period. Either being zero disables the feature — there's no separate flag.
     pub fn enabled(&self) -> bool {
-        self.ratio > literal!(Ratio = 0.0) && self.inactivity_days.value() > 0
+        self.ratio > literal!(Ratio = 0.0) && !self.inactivity_days.is_zero()
     }
 }
 
@@ -76,7 +77,6 @@ impl Default for BroadcastConfig {
             retry_delay: Duration::from_mins(1),
             max_retry_delay: Duration::from_hours(1),
             max_attempts: AttemptsCount::new(3),
-            max_age: Duration::from_hours(48),
             retention: Duration::from_hours(72),
             language_sample: Limit::new(100),
         }

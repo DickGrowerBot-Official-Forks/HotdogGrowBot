@@ -275,6 +275,41 @@ async fn a_removed_message_stays_until_it_is_cleaned_up() {
     assert_eq!(removed, 1);
 }
 
+/// Only the chat messages past Telegram's limit are expired, counted by group and kind; an inline
+/// message has no such limit, and a fresh one is left for the worker.
+#[tokio::test]
+async fn only_the_stale_chat_messages_are_expired() {
+    let db = fresh_db().await;
+    let repo = ScheduledDeletions::new(db.clone());
+    let inline = DeletionTarget::InlineMessage(InlineMessageId::new("AgAAAOEcAABzXwsRJ0Cs2A".to_owned()));
+    repo.schedule(&[
+        due(chat_message(1), MessageKind::Reply),
+        due(chat_message(2), MessageKind::Command),
+        due(chat_message(3), MessageKind::Command),
+        due(inline, MessageKind::Inline),
+    ]).await.expect("couldn't schedule the deletions");
+    sqlx::query!("UPDATE Scheduled_Message_Deletions SET created_at = current_timestamp - interval '49 hours'")
+        .execute(&db).await.expect("couldn't age the deletions");
+    repo.schedule(&[due(chat_message(4), MessageKind::Reply)])
+        .await.expect("couldn't schedule the fresh deletion");
+
+    let expired = repo.expire_stale(Utc::now() - Duration::from_hours(48), Limit::new(10))
+        .await.expect("couldn't expire the stale deletions");
+    let mut counts: Vec<_> = expired.iter()
+        .map(|batch| (batch.group, batch.kind.to_string(), batch.count.value()))
+        .collect();
+    counts.sort_by(|a, b| a.1.cmp(&b.1));
+    assert_eq!(counts, vec![
+        (MessageGroup::Notice, "command".to_owned(), 2),
+        (MessageGroup::Notice, "reply".to_owned(), 1),
+    ]);
+
+    let claimed = repo.claim_due(Limit::new(10), far_future())
+        .await.expect("couldn't claim the deletions");
+    assert_eq!(claimed.len(), 2, "the inline message and the fresh one are left: {claimed:?}");
+    assert_eq!(finished_states(&db).await, vec![("expired".to_owned(), 3)]);
+}
+
 #[tokio::test]
 async fn a_cancelled_message_is_kept() {
     let db = fresh_db().await;

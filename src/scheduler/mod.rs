@@ -180,9 +180,16 @@ pub fn spawn_deletion_worker(bot: Throttle<Bot>, repos: Repositories, cache: Cac
         concurrency = %self_destruction.concurrency, mode = %self_destruction.mode,
         "the self-destruction worker has started");
     tokio::spawn(metrics::TASK_SELF_DESTRUCTION.instrument(async move {
+        // Only a stalled worker can let a message outlive Telegram's limit, and a restart ends that.
+        // Done before the first claim, which would otherwise hand out the dead rows first.
+        deletions::expire_stale(&repos, &self_destruction).await;
+
         let mut ticker = paced(self_destruction.poll_interval);
         loop {
             ticker.tick().await;
+            // Set before any work of the tick: one stuck inside claim_due or a request must stop
+            // moving this forward.
+            metrics::SELF_DESTRUCTION_LAST_TICK_TIMESTAMP.set(chrono::Utc::now().timestamp());
 
             // A failed tick is logged and forgotten: the rows are still there, and the next tick
             // picks them up. Only the count is skipped, as it comes from the same database.
