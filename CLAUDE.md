@@ -319,6 +319,7 @@ MSG_SELFDESTRUCT_WARNING=15s    # grace period showing "will be deleted in N sec
 MSG_SELFDESTRUCT_MODE=ENABLED           # DISABLED | ENABLED | ONLY_WITH_COMMAND | WITHOUT_COMMAND
 MSG_SELFDESTRUCT_POLL=5s           # how often the worker looks for the due messages
 MSG_SELFDESTRUCT_BATCH_SIZE=50          # messages one run takes on
+MSG_SELFDESTRUCT_EXPIRY_BATCH_SIZE=5000 # rows one statement of the startup cleanup expires
 MSG_SELFDESTRUCT_CONCURRENCY=8          # how many of them it acts on at once
 MSG_SELFDESTRUCT_LEASE=5m          # how long a claimed batch is held out of reach
 MSG_SELFDESTRUCT_INLINE_GROUPS=         # comma-separated groups; empty => inline messages are kept
@@ -514,6 +515,26 @@ message is sent, so it is the message's age). Delays are capped below 48 hours, 
 fell behind — a long outage, a chain of retries — can produce a message that old, and spending a
 request on a refusal that is certain teaches nothing.
 
+**A backlog of those is expired in bulk, once, before the worker's first tick.**
+`spawn_deletion_worker` runs `ScheduledDeletions::expire_stale` in batches of
+`MSG_SELFDESTRUCT_EXPIRY_BATCH_SIZE`, resting `MSG_SELFDESTRUCT_POLL` between them, each answering with a
+count per group and kind that goes to the counter and to **one** `warn!`. Claimed and expired row by
+row, an outage's worth of rows would cost a lease, a `finish` and a log line apiece — tens of
+thousands of identical warnings for a single event, every one of them already in the table.
+
+**Startup is the only moment such a backlog can have appeared**, which is why the run belongs there
+and not on every tick. Telegram's own refusals never produce one: `MSG_SELFDESTRUCT_MAX_ATTEMPTS`
+ends a row within minutes of the first failure, long before it could reach 48 hours. The only way to
+accumulate them is the worker not running — a hang, a crash loop, a bot that was down — and that is
+what a restart ends. Ordering it before the claim is what matters: `claim_due` orders by
+`fire_after`, so the dead rows sort first and would otherwise be handed out
+`MSG_SELFDESTRUCT_BATCH_SIZE` at a time, ahead of every live message. The per-row check in `act`
+stays behind it at `debug`, for the row that crosses the line while the worker is up — the hour of
+headroom under `MAX_AGE` allows for exactly that one.
+
+A worker that hangs therefore also stops the only thing that clears up after it, so
+`self_destruction_last_tick_timestamp_seconds` is what says it happened (see the gauges below).
+
 The command behind an answer is a row of its own (`message_kind = 'command'`), scheduled at
 `fire_after + warning` so that both messages disappear together — a user's message can't be edited
 into the warning the answer shows meanwhile. `ONLY_WITH_COMMAND` writes *neither* row when the bot
@@ -615,8 +636,22 @@ growing. Everything below follows from that.
   thought about it and refused, so the same payload gets the same answer, and three attempts across
   199k chats is an outage rather than a hiccup. `ApiError::Unknown` stays retryable — Telegram's own
   5xx answers arrive that way — unless its text says the chat is unreachable.
-* **A summary older than `DAILY_SHRINK_BROADCAST_MAX_AGE` is `expired`** without spending a request.
-  Yesterday's list is still news in a chat that reads once a day; last week's is noise.
+* **A summary left over from an earlier day is `expired`**, and the day is the key rather than an
+  age. The run that queues a day's summaries clears the previous ones first
+  (`scheduler::shrink::expire_superseded`, `shrink_date < current_date`), in batches of
+  `DAILY_SHRINK_EXPIRY_BATCH_SIZE` paced by `DAILY_SHRINK_BATCH_DELAY`. Yesterday's list is still news in a chat that reads once a day — but
+  not once today's is ready, because then both arrive together, and chats complained about exactly
+  that. Nothing is sent to find this out: there is no age to check in `send` and no request to spend.
+
+  **The key has to be the day, not the wall clock.** The enqueue conflicts on
+  `(chat_id, shrink_date)` and does nothing for a row that is already there, finished or not. So an
+  expiry that took today's rows with it — a restart with `DAILY_SHRINK_RUN_ON_STARTUP` while the
+  queue is still draining, or any re-run of the day — would clear the day's broadcast and have
+  nothing able to put it back. Keyed on the date, a run never touches its own rows, and re-running a
+  day stays idempotent. `a_second_run_of_the_same_day_leaves_its_own_summaries_alone` pins it.
+
+  It also means there is no knob: a summary's life is one day, because that is when the next one
+  arrives.
 
 ```
 DAILY_SHRINK_RATIO=0.01                # unset or 0 => the whole feature is off, queue included
@@ -625,6 +660,7 @@ DAILY_SHRINK_RAMP_UP_DAYS=7
 DAILY_SHRINK_RUN_ON_STARTUP=false      # run once at startup instead of waiting for UTC midnight
 DAILY_SHRINK_BATCH_SIZE=100            # chats per shrinking statement
 DAILY_SHRINK_BATCH_DELAY=0s            # rest between two batches; 0 => back to back
+DAILY_SHRINK_EXPIRY_BATCH_SIZE=5000    # rows one statement of the nightly cleanup expires
 DAILY_SHRINK_BROADCAST_POLL=5s
 DAILY_SHRINK_BROADCAST_BATCH_SIZE=200  # summaries one run claims
 DAILY_SHRINK_BROADCAST_CONCURRENCY=16  # how many it sends at once — the throughput knob
@@ -633,7 +669,6 @@ DAILY_SHRINK_BROADCAST_SEND_TIMEOUT=30s # backstop for a hang BOT_HTTP_TIMEOUT d
 DAILY_SHRINK_BROADCAST_RETRY_DELAY=1m
 DAILY_SHRINK_BROADCAST_MAX_RETRY_DELAY=1h
 DAILY_SHRINK_BROADCAST_MAX_ATTEMPTS=3
-DAILY_SHRINK_BROADCAST_MAX_AGE=48h # older than this and the summary is `expired` unsent
 DAILY_SHRINK_BROADCAST_TABLE_CLEANING_DELAY=3d       # 0 => finished rows are kept for ever
 ```
 
@@ -668,9 +703,13 @@ SQL; everything a human looks at — which chats failed and why, the states over
 is looking. A gauge over the finished rows was the opposite trade: grouping a few hundred thousand
 rows by state every five seconds so that a graph could show what one SQL query already answers.
 
-**The heartbeat is the worker's; the two depths belong to `spawn_queue_reporter`.**
-`daily_shrink_broadcast_last_tick_timestamp_seconds` has to be written by the tick it measures, so it
-stays there. `daily_shrink_broadcast_pending` and `self_destruction_pending` do not: counting a queue
+**A heartbeat is its own worker's; the two depths belong to `spawn_queue_reporter`.**
+`daily_shrink_broadcast_last_tick_timestamp_seconds` and
+`self_destruction_last_tick_timestamp_seconds` have to be written by the tick each measures, so they
+stay there. That the reporter is a task of its own is exactly why neither depth can stand in for a
+heartbeat: both keep being published while the worker they describe is dead, which is what the
+self-destruction one was added for — that queue has no backlog alert beside it, since it is never
+empty for long by design. `daily_shrink_broadcast_pending` and `self_destruction_pending` do not: counting a queue
 is a scan of its whole pending index, and hanging that off a five-second poll tied three table scans
 to the workers' cadence, day and night, whether or not either queue had anything in it. They go out
 every `scheduler::QUEUE_GAUGE_INTERVAL` (60s) from a task of their own — a constant on the same
@@ -1446,6 +1485,9 @@ Runtime features are gated by environment variables parsed in `config/`. Check `
   pub shrink_events_days: DaysCount,
   ```
 
+  A domain number answers `is_zero()`, so a comparison against zero is spelled with it rather than
+  through `.value()`.
+
 - **A number changing type says which conversion it is.** `as` is denied
   (`[workspace.lints.clippy]` in the root `Cargo.toml`), because one token means three different
   things and a reader can't tell them apart without knowing both types. Name it instead:
@@ -1542,8 +1584,35 @@ Runtime features are gated by environment variables parsed in `config/`. Check `
       .unwrap_or_default();
   ```
 
-  A `match` is still the right tool when a branch needs `return`/`continue`, guards
-  (`Err(e) if …`), or more than two outcomes.
+  **A diverging branch is not a reason to reach for `match`** — `let … else` covers it, and the
+  handling goes in the `else`, which is the branch that already exists for it.
+
+  ```rust
+  // ❌ two arms only to log and bail out
+  let expired = match repo.expire_stale(limit).await {
+      Ok(expired) => expired,
+      Err(e) => {
+          tracing::warn!(error = format!("{e:#}"), "couldn't expire the rows");
+          return
+      },
+  };
+
+  // ✅ let-else, with the log in the branch that leaves
+  let Ok(expired) = repo.expire_stale(limit).await else {
+      tracing::warn!("couldn't expire the rows");
+      return
+  };
+  ```
+
+  `let … else` binds nothing in the `else`, so the error's own text is not available there and the
+  message stands alone. That is the trade: where the text is worth more than the shape — an error
+  whose chain is the only clue to what went wrong — bind it with a `match` instead.
+
+  The `else` of a `let … else` must diverge. A fallback that produces a value instead of leaving is
+  `if let … else` as an expression — which is also the only shape an `async` fallback can take, since
+  `unwrap_or_else` takes no async closure.
+
+  A `match` is still the right tool for guards (`Err(e) if …`) or more than two outcomes.
 
 ## Tests against the database
 

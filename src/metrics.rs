@@ -94,6 +94,8 @@ pub static SELF_DESTRUCTION_BATCH_SIZE: Lazy<Histogram> = Lazy::new(||
         &[0.0, 1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0]));
 pub static SELF_DESTRUCTION_BATCH_LIMIT: Lazy<Gauge> = Lazy::new(||
     Gauge::new("self_destruction_batch_limit", "the value of MSG_SELFDESTRUCT_BATCH_SIZE, so that a graph can tell a full batch from a small one without knowing the setting"));
+pub static SELF_DESTRUCTION_LAST_TICK_TIMESTAMP: Lazy<Gauge> = Lazy::new(||
+    Gauge::new("self_destruction_last_tick_timestamp_seconds", "when the worker's loop last came back around to ticker.tick(), as a Unix timestamp. Set at the very top of every iteration, before a message is claimed or acted on, so a tick stuck inside one request (or inside claim_due) is visible within a poll interval or two. self_destruction_pending cannot stand in for it: that gauge is published by the queue reporter, a task of its own, so it keeps updating while this worker is dead. Alert when time() minus this passes a few times MSG_SELFDESTRUCT_POLL"));
 pub static ANNOUNCEMENT_SHOWN: Lazy<AnnouncementCounter> = Lazy::new(||
     AnnouncementCounter::new("announcement_shown_total", "count of announcements shown at the end of the Dick of the Day message, split by the recipient's language"));
 pub static CHAT_MIGRATION: Lazy<ChatMigrationCounter> = Lazy::new(||
@@ -700,7 +702,12 @@ impl SelfDestructionCounters {
     /// So the sum of all outcomes is the number of messages the worker finished with, and the
     /// share of each outcome means something on its own.
     pub fn record(&self, group: MessageGroup, kind: MessageKind, state: DeletionState) {
-        self.0.counter(&[&group.to_string(), &kind.to_string(), &state.to_string()]).inc()
+        self.record_many(group, kind, state, 1)
+    }
+
+    /// `count` messages of one group and kind ended in `state` at once.
+    pub fn record_many(&self, group: MessageGroup, kind: MessageKind, state: DeletionState, count: u64) {
+        self.0.counter(&[&group.to_string(), &kind.to_string(), &state.to_string()]).inc_by(count)
     }
 }
 
@@ -836,7 +843,12 @@ impl DailyShrinkCounters {
     /// One summary reached a state it never leaves. Counted where the row is written, so the table
     /// and this counter can't say different things.
     pub fn broadcast_finished(&self, state: BroadcastState) {
-        self.broadcasts.counter(&[&state.to_string()]).inc()
+        self.broadcasts_finished(state, 1)
+    }
+
+    /// `count` summaries ended in `state` at once.
+    pub fn broadcasts_finished(&self, state: BroadcastState, count: u64) {
+        self.broadcasts.counter(&[&state.to_string()]).inc_by(count)
     }
 
     /// One attempt failed for a reason worth another attempt. Not an ending: the summary is counted

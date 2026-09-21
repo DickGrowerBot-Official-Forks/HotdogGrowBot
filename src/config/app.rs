@@ -61,6 +61,7 @@ impl AppConfig {
             ramp_up_days: env_value!("DAILY_SHRINK_RAMP_UP_DAYS": DaysCount, or = 7),
             batch_size: env_value!("DAILY_SHRINK_BATCH_SIZE": Limit, or = 100, at_least = 1),
             batch_delay: env_duration!("DAILY_SHRINK_BATCH_DELAY"),
+            expiry_batch_size: env_value!("DAILY_SHRINK_EXPIRY_BATCH_SIZE": Limit, or = 5000, at_least = 1),
             broadcast: BroadcastConfig {
                 poll_interval: env_duration!("DAILY_SHRINK_BROADCAST_POLL", or = secs(5), at_least = secs(1)),
                 batch_size: env_value!("DAILY_SHRINK_BROADCAST_BATCH_SIZE": Limit, or = 200, at_least = 1),
@@ -70,7 +71,6 @@ impl AppConfig {
                 retry_delay: env_duration!("DAILY_SHRINK_BROADCAST_RETRY_DELAY", or = mins(1), at_least = secs(1)),
                 max_retry_delay: env_duration!("DAILY_SHRINK_BROADCAST_MAX_RETRY_DELAY", or = hours(1), at_least = secs(1)),
                 max_attempts: env_value!("DAILY_SHRINK_BROADCAST_MAX_ATTEMPTS": AttemptsCount, or = 3, at_least = 1),
-                max_age: env_duration!("DAILY_SHRINK_BROADCAST_MAX_AGE", or = hours(48), at_least = secs(1)),
                 retention: env_duration!("DAILY_SHRINK_BROADCAST_TABLE_CLEANING_DELAY", or = days(3)),
                 language_sample: env_value!("MOST_POPULAR_LANGUAGE_SAMPLE_SIZE": Limit, or = 100, at_least = 1),
             },
@@ -87,6 +87,7 @@ impl AppConfig {
             mode: get_optional_env_value("MSG_SELFDESTRUCT_MODE"),
             poll_interval: env_duration!("MSG_SELFDESTRUCT_POLL", or = secs(5), at_least = secs(1)),
             batch_size: env_value!("MSG_SELFDESTRUCT_BATCH_SIZE": Limit, or = 50, at_least = 1),
+            expiry_batch_size: env_value!("MSG_SELFDESTRUCT_EXPIRY_BATCH_SIZE": Limit, or = 5000, at_least = 1),
             concurrency: env_value!("MSG_SELFDESTRUCT_CONCURRENCY": Limit, or = 8, at_least = 1),
             lease: env_duration!("MSG_SELFDESTRUCT_LEASE", or = mins(5), at_least = secs(1)),
             inline_groups: get_optional_env_value("MSG_SELFDESTRUCT_INLINE_GROUPS"),

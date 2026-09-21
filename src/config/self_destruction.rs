@@ -151,6 +151,10 @@ pub struct SelfDestructionConfig {
     pub poll_interval: Duration,
     /// How many messages one run of the worker takes on.
     pub batch_size: Limit,
+    /// How many messages past Telegram's limit one statement of the startup cleanup finishes as
+    /// expired. It bounds the rows that statement locks and the time it may spend inside
+    /// `statement_timeout`, not how much gets cleared: the cleanup repeats until nothing is left.
+    pub expiry_batch_size: Limit,
     /// How many of them it acts on at once. What one run gets through is this many messages per
     /// round trip to Telegram, so this is the knob for throughput and `batch_size` only bounds how
     /// much a run claims.

@@ -46,8 +46,6 @@ enum Outcome {
     Sent,
     /// Something transient went wrong; the row is tried again later.
     Retry,
-    /// The summary sat in the queue until it stopped being worth sending.
-    Expired,
     /// The bot can't post to that chat at all, which marks the chat too.
     Unreachable,
     /// It won't work, now or later, for a reason that says nothing about the chat.
@@ -117,7 +115,6 @@ async fn send_and_record(deps: BroadcastDeps<'_>, broadcast: ScheduledBroadcast)
     // summaries. A retry is a step, not an ending, and has a counter of its own.
     let result = match outcome {
         Outcome::Sent => finish(deps.repos, id, BroadcastState::Sent, lang).await,
-        Outcome::Expired => finish(deps.repos, id, BroadcastState::Expired, lang).await,
         Outcome::Unreachable => finish(deps.repos, id, BroadcastState::Unreachable, lang).await,
         Outcome::Failed => finish(deps.repos, id, BroadcastState::Failed, lang).await,
         Outcome::Retry => {
@@ -157,15 +154,6 @@ async fn send(deps: BroadcastDeps<'_>, broadcast: &ScheduledBroadcast) -> (Outco
     let BroadcastDeps { bot, repos, topics, config, .. } = deps;
     let broadcast_config = &config.daily_shrink.broadcast;
 
-    // A summary that waited this long has stopped being news, and the chat has the `shrinks`
-    // command for the history. Only a queue that fell behind can bring one here. Checked before
-    // anything is resolved or rendered, so an expired row costs neither a query nor a request.
-    let age = (Utc::now() - broadcast.created_at).to_std().unwrap_or(Duration::ZERO);
-    if age > broadcast_config.max_age {
-        tracing::warn!(created_at = %broadcast.created_at, "the shrink summary got too old to be worth sending");
-        return (Outcome::Expired, None)
-    }
-
     let chat = ChatIdKind::from(broadcast.chat_id);
     // What an earlier attempt settled on wins outright: it is already what this chat was going to
     // be told, and re-deciding could answer the same list in another language.
@@ -175,13 +163,11 @@ async fn send(deps: BroadcastDeps<'_>, broadcast: &ScheduledBroadcast) -> (Outco
     };
     let lang_code = LanguageCode::new(lang.to_string());
 
-    let page = match shrinks_page_for_internal_chat(repos, config, broadcast.internal_chat_id, &lang_code,
-                                                    ShrinkView::Broadcast, broadcast.shrink_date, Page::first()).await {
-        Ok(page) => page,
-        Err(e) => {
-            tracing::warn!(error = format!("{e:#}"), "couldn't render the shrink summary");
-            return (Outcome::Retry, Some(lang))
-        },
+    let Ok(page) = shrinks_page_for_internal_chat(repos, config, broadcast.internal_chat_id, &lang_code,
+                                                  ShrinkView::Broadcast, broadcast.shrink_date, Page::first()).await
+    else {
+        tracing::warn!("couldn't render the shrink summary");
+        return (Outcome::Retry, Some(lang))
     };
     // A single day by definition, so day-navigation (`adjacent`) is always `None`.
     let keyboard = build_shrink_keyboard(ShrinkView::Broadcast, broadcast.shrink_date,

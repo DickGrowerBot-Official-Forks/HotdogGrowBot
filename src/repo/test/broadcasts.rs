@@ -229,6 +229,66 @@ async fn only_the_finished_rows_are_cleaned_up() {
     assert_eq!(pending, 1);
 }
 
+/// Expired without being claimed, and today's summaries stay for the worker.
+#[tokio::test]
+async fn only_the_summaries_of_earlier_days_are_expired() {
+    let db = fresh_db().await;
+    let repo = ScheduledBroadcasts::new(db.clone());
+    queue(&db, create_chat(&db, -1001234567890).await, 3).await;
+    queue(&db, create_chat(&db, -1009876543210).await, 5).await;
+    queue(&db, create_chat(&db, -1001111111111).await, 0).await;
+
+    let expired = repo.expire_stale(Limit::new(10))
+        .await.expect("couldn't expire the superseded summaries");
+    assert_eq!(expired.count, 2);
+    let oldest = expired.oldest.expect("two summaries expired, so there is an oldest");
+    assert_eq!(oldest, Utc::now().date_naive() - chrono::TimeDelta::days(5));
+
+    let claimed = repo.claim_due(Limit::new(10), far_future())
+        .await.expect("couldn't claim the summaries");
+    assert_eq!(claimed.len(), 1);
+    assert_eq!(claimed[0].chat_id, TelegramChatId::new(-1001111111111));
+    assert_eq!(finished_states(&db).await, vec![("expired".to_owned(), 2)]);
+}
+
+/// A run expires the earlier days before queuing its own, and must not take its own with them: the
+/// enqueue conflicts on `(chat_id, shrink_date)` and would put nothing back.
+#[tokio::test]
+async fn a_second_run_of_the_same_day_leaves_its_own_summaries_alone() {
+    let db = fresh_db().await;
+    let repo = ScheduledBroadcasts::new(db.clone());
+    let chat = create_chat(&db, -1001234567890).await;
+    queue(&db, chat, 0).await;
+
+    let expired = repo.expire_stale(Limit::new(10))
+        .await.expect("couldn't expire the superseded summaries");
+    assert_eq!(expired.count, 0);
+
+    queue(&db, chat, 0).await;
+    let claimed = repo.claim_due(Limit::new(10), far_future())
+        .await.expect("couldn't claim the summaries");
+    assert_eq!(claimed.len(), 1, "the summary of the day must survive a re-run");
+}
+
+/// The limit is what keeps one statement from locking a whole backlog at once.
+#[tokio::test]
+async fn the_expiry_takes_no_more_than_its_limit() {
+    let db = fresh_db().await;
+    let repo = ScheduledBroadcasts::new(db.clone());
+    queue(&db, create_chat(&db, -1001234567890).await, 3).await;
+    queue(&db, create_chat(&db, -1009876543210).await, 3).await;
+
+    for _ in 0..2 {
+        let expired = repo.expire_stale(Limit::new(1))
+            .await.expect("couldn't expire the superseded summaries");
+        assert_eq!(expired.count, 1);
+    }
+    let expired = repo.expire_stale(Limit::new(1))
+        .await.expect("couldn't expire the superseded summaries");
+    assert_eq!(expired.count, 0);
+    assert_eq!(expired.oldest, None);
+}
+
 /// A chat known only by its `chat_instance` can never be messaged, so a row pointing at one is
 /// given up on rather than handed to the worker — and must not come back with every tick.
 #[tokio::test]
