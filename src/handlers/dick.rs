@@ -47,7 +47,7 @@ pub async fn dick_cmd_handler(bot: Bot, msg: Message, cmd: DickCommands,
             metrics::CMD_TOP_COUNTER.chat.inc();
             let top = top_impl(&repos, &config, from_refs, Page::first()).await?;
             let mut request = reply_html(bot, &msg, top.lines);
-            if top.has_more_pages && config.features.top_unlimited {
+            if top.has_more_pages {
                 let keyboard = ReplyMarkup::InlineKeyboard(build_pagination_keyboard(Page::first(), top.has_more_pages));
                 request.reply_markup.replace(keyboard);
             }
@@ -188,10 +188,6 @@ pub fn page_callback_filter(query: CallbackQuery) -> bool {
 pub async fn page_callback_handler(bot: Bot, q: CallbackQuery,
                                    config: config::AppConfig, repos: repo::Repositories) -> HandlerResult {
     let edit_msg_req_params = callbacks::get_params_for_message_edit(&q)?;
-    if !config.features.top_unlimited {
-        return answer_callback_feature_disabled(bot, &q, edit_msg_req_params).await
-    }
-
     let page = q.data.as_ref()
         .ok_or(InvalidPage::message("no data"))
         .and_then(|d| d.strip_prefix(CALLBACK_PREFIX_TOP_PAGE)
@@ -244,23 +240,4 @@ pub fn build_pagination_keyboard(page: Page, has_more_pages: bool) -> InlineKeyb
         buttons.push(InlineKeyboardButton::callback("➡️", format!("{CALLBACK_PREFIX_TOP_PAGE}{next_page}")))
     }
     InlineKeyboardMarkup::new(vec![buttons])
-}
-
-async fn answer_callback_feature_disabled(bot: Bot, q: &CallbackQuery, edit_msg_req_params: callbacks::EditMessageReqParamsKind) -> HandlerResult {
-    let lang_code = LanguageCode::from_user(&q.from);
-
-    let mut answer = bot.answer_callback_query(q.id.clone());
-    answer.show_alert.replace(true);
-    answer.text.replace(t!("errors.feature_disabled", locale = &lang_code).to_string());
-    answer.await?;
-
-    match edit_msg_req_params {
-        callbacks::EditMessageReqParamsKind::Chat(chat_id, message_id) =>
-            bot.edit_message_reply_markup(chat_id, message_id)
-                .await.map(|_| ())?,
-        callbacks::EditMessageReqParamsKind::Inline { inline_message_id, .. } =>
-            bot.edit_message_reply_markup_inline(inline_message_id)
-                .await.map(|_| ())?
-    };
-    Ok(())
 }

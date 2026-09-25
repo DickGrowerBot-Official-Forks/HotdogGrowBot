@@ -35,7 +35,6 @@ impl From<DickEntity> for Dick {
 pub struct Dicks {
     pool: Pool<Postgres>,
     chats: Chats,
-    features: FeatureToggles,
 }
 
 impl Dicks {
@@ -43,7 +42,6 @@ impl Dicks {
         Self {
             chats: Chats::new(pool.clone(), features),
             pool,
-            features,
         }
     }
 
@@ -154,9 +152,6 @@ impl Dicks {
     }
 
     async fn get_position_in_top(&self, chat_id_internal: InternalChatId, uid: UserId) -> anyhow::Result<Option<Position>> {
-        if !self.features.top_unlimited {
-            return Ok(None)
-        }
         sqlx::query_scalar!(
                 r#"SELECT position AS "position!" FROM (
                     SELECT uid, ROW_NUMBER() OVER (ORDER BY length DESC, updated_at DESC, name) AS position

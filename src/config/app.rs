@@ -30,10 +30,8 @@ impl AppConfig {
         let dod_selection_mode = get_optional_env_value("DOD_SELECTION_MODE");
         let dod_rich_exclusion_ratio = get_optional_env_ratio("DOD_RICH_EXCLUSION_RATIO");
         let chats_merging = get_env_value_or_default("CHATS_MERGING_ENABLED", false);
-        let top_unlimited = get_env_value_or_default("TOP_UNLIMITED_ENABLED", false);
         let pvp_default_bet = get_env_value_or_default("PVP_DEFAULT_BET", Bet::literal(1));
         let check_acceptor_length = get_env_value_or_default("PVP_CHECK_ACCEPTOR_LENGTH", false);
-        let callback_locks = get_env_value_or_default("PVP_CALLBACK_LOCKS_ENABLED", true);
         let show_stats = get_env_value_or_default("PVP_STATS_SHOW", true);
         let show_stats_notice = get_env_value_or_default("PVP_STATS_SHOW_NOTICE", true);
         let announcement_max_shows = get_optional_env_value("ANNOUNCEMENT_MAX_SHOWS");
@@ -45,11 +43,9 @@ impl AppConfig {
         Self {
             features: FeatureToggles {
                 chats_merging,
-                top_unlimited,
                 dod_selection_mode,
                 pvp: BattlesFeatureToggles {
                     check_acceptor_length,
-                    callback_locks,
                     show_stats,
                     show_stats_notice,
                 }

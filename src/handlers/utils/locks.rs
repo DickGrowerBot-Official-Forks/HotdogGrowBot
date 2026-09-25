@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use derive_more::Display;
 use flurry::HashSet;
-use crate::config::FeatureToggles;
 
 use crate::handlers::utils::callbacks::CallbackDataWithPrefix;
 
@@ -16,37 +15,16 @@ pub trait LockCallbackServiceImplTrait : Clone + Send + Sync {
 
 pub trait Guard: Send + Sync {}
 
-#[derive(Clone)]
-pub enum LockCallbackServiceFacade {
-    NoOp,
-    InMemory(InMemoryLockCallbackService),
-}
+#[derive(Clone, Default)]
+pub struct LockCallbackServiceFacade(InMemoryLockCallbackService);
 
 impl LockCallbackServiceFacade {
-    pub fn from_config(features: FeatureToggles) -> Self {
-        if features.pvp.callback_locks {
-            log::info!("LockCallbackService: in-memory");
-            Self::InMemory(InMemoryLockCallbackService::default())
-        } else {
-            log::info!("LockCallbackService: none");
-            Self::NoOp
-        }
-    }
-
     pub fn try_lock<T>(&mut self, callback_data: &T) -> Option<Box<dyn Guard>>
     where T: CallbackDataWithPrefix,
     {
-        match self {
-            Self::NoOp => Some(Box::<NoOpGuard>::default()),
-            Self::InMemory(service) => service.try_lock(callback_data)
-                .map(|guard| Box::new(guard) as Box<dyn Guard>),
-        }
+        self.0.try_lock(callback_data).map(|guard| Box::new(guard) as Box<dyn Guard>)
     }
 }
-
-#[derive(Default)]
-pub struct NoOpGuard {}
-impl Guard for NoOpGuard {}
 
 #[derive(Clone, Default)]
 pub struct InMemoryLockCallbackService {

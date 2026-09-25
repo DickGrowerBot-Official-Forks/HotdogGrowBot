@@ -15,7 +15,6 @@ pub enum DickOfDaySelectionMode {
 #[derive(Clone, Copy)]
 pub struct FeatureToggles {
     pub chats_merging: bool,
-    pub top_unlimited: bool,
     pub dod_selection_mode: DickOfDaySelectionMode,
     pub pvp: BattlesFeatureToggles,
 }
@@ -25,7 +24,6 @@ impl Default for FeatureToggles {
     fn default() -> Self {
         Self {
             chats_merging: true,
-            top_unlimited: true,
             dod_selection_mode: Default::default(),
             pvp: Default::default(),
         }
@@ -35,7 +33,6 @@ impl Default for FeatureToggles {
 #[derive(Copy, Clone, Default)]
 pub struct BattlesFeatureToggles {
     pub check_acceptor_length: bool,
-    pub callback_locks: bool,
     pub show_stats: bool,
     pub show_stats_notice: bool,
 }

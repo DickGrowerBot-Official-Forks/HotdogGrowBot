@@ -1,6 +1,5 @@
 use num_traits::ToPrimitive;
 use sqlx::{Pool, Postgres};
-use crate::config::FeatureToggles;
 use crate::domain::primitives::{Bet, Length, LengthChange, Limit, Offset, Position, UserId};
 use crate::domain::primitives::chat::{ChatIdKind, ChatIdPartiality};
 use crate::repo;
@@ -35,42 +34,6 @@ async fn test_all() {
         .expect("couldn't elect a winner")
         .expect("the winner hasn't a dick");
     assert_eq!(growth.pos_in_top, Some(Position::new(1)));
-    let new_length = 2 * increment;
-    assert_eq!(growth.new_length, new_length);
-    check_top(&dicks, &chat_id, new_length).await;
-}
-
-#[tokio::test]
-async fn test_all_with_top_pagination_disabled() {
-    let (_container, db) = start_postgres().await;
-    let dicks = {
-        let features = FeatureToggles {
-            top_unlimited: false,
-            ..Default::default()
-        };
-        repo::Dicks::new(db.clone(), features)
-    };
-    create_user(&db).await;
-
-    let user_id = USER_ID;
-    let chat_id = CHAT_ID_KIND;
-    let chat_id_partiality = chat_id.clone().into();
-    let d = dicks.get_top(&chat_id, Offset::new(0), Limit::literal(1))
-        .await.expect("couldn't fetch the empty top");
-    assert_eq!(d.len(), 0);
-
-    let increment = 5;
-    let growth = dicks.create_or_grow(user_id, &chat_id_partiality, increment_of(increment))
-        .await.expect("couldn't grow a dick");
-    assert_eq!(growth.pos_in_top, None);
-    assert_eq!(growth.new_length, increment);
-    check_top(&dicks, &chat_id, increment).await;
-
-    let growth = dicks.set_dod_winner(&chat_id_partiality, user_id, increment_of(increment))
-        .await
-        .expect("couldn't elect a winner")
-        .expect("the winner hasn't a dick");
-    assert_eq!(growth.pos_in_top, None);
     let new_length = 2 * increment;
     assert_eq!(growth.new_length, new_length);
     check_top(&dicks, &chat_id, new_length).await;

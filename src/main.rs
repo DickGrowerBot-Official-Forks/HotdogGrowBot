@@ -75,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let incrementor = handlers::utils::Incrementor::from_env();
     let help_context = config::build_context_for_help_messages(me, &incrementor)?;
     let help_container = help::render_help_messages(help_context)?;
-    let battle_locker = LockCallbackServiceFacade::from_config(app_config.features);
+    let battle_locker = LockCallbackServiceFacade::default();
 
     let webhook_url: Option<Url> = match std::env::var(ENV_WEBHOOK_URL) {
         Ok(env_url) if !env_url.is_empty() => Some(env_url.parse()?),
