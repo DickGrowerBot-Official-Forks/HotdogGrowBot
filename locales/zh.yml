@@ -25,7 +25,7 @@ commands:
     already_chosen: "今日热狗已经被选出来了！是<b>%{name}</b>。"
     no_candidates: "没有候选人可以选举。在这个聊天中还没有人加入游戏 😢"
   pvp:
-    description: "斗鸡！"
+    description: "让热狗对战！"
     results:
       start: "<b>%{name}</b> 向聊天发起了一个<b>%{bet}″</b>的挑战！"
       finish: "胜利者是<b>%{winner_name}</b>！他的热狗现在长度为<b>%{winner_length}″</b>。失败者的热狗长度为<b>%{loser_length}″</b>。\n赌注是<b>%{bet}″</b>。"
@@ -35,14 +35,14 @@ commands:
       stats:
         text: "<b>胜利者</b>的胜率 — <b>%{winner_win_rate}</b>。\n他当前的连胜 — <b>%{winner_win_streak}</b>，最大连胜 — <b>%{winner_win_streak_max}</b>。\n<b>失败者</b>的胜率 — <b>%{loser_win_rate}</b>。"
         lost_win_streak: "<b>%{lost_win_streak}</b> 连胜被终结了。"
-    button: "斗鸡！"
+    button: "挑战！"
     errors:
       no_args: "发起挑战时请填写以英寸为单位的赌注。"
       not_enough:
         initiator: "呃。发起者的热狗不够长，无法下这么大的赌注！"
-        acceptor: "你的枪不够长 😣"
-      same_person: "你不能和自己斗鸡！"
-      battle_already_in_progress: "已经在斗鸡！结果立等可取"
+        acceptor: "你的热狗不够长 😣"
+      same_person: "你不能和自己对战！"
+      battle_already_in_progress: "对战已经开始！结果马上揭晓"
   stats:
     description: "统计"
     length: "长度: <b>%{length}″</b>\n在排行榜上的位置: <b>%{pos}</b>"
@@ -50,7 +50,7 @@ commands:
     personal: "<i>你的个人统计:</i>\n— 你参与的游戏聊天数量: <b>%{chats}</b>。\n— 最大长度: <b>%{max_length}″</b>。\n— 所有聊天中的热狗总长度: <b>%{total_length}″</b>。"
   reset:
     description: "重置本群所有热狗长度"
-    warning: "这将永久删除本群所有玩家的热狗长度。每日获胜记录和对战统计会保留，所有人都可以立即再次使用 /grow。是否继续？"
+    warning: "本群所有玩家的热狗长度都将归零。今天的 /grow 和 /dod 次数将重置；对战统计和之前的每日获胜者会保留。是否继续？"
     buttons:
       confirm: "重置长度"
       cancel: "取消"

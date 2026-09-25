@@ -50,7 +50,7 @@ commands:
     personal: "<i>Le tue statistiche personali:</i>\n— Numero di gruppi in cui giochi: <b>%{chats}</b>.\n— Lunghezza massima raggiunta: <b>%{max_length}″</b>.\n— Somma dei tuoi hot dog in tutti i gruppi: <b>%{total_length}″</b>."
   reset:
     description: "Azzera tutte le lunghezze della chat"
-    warning: "Questa operazione elimina definitivamente tutte le lunghezze degli hot dog nella chat. I vincitori giornalieri e le statistiche delle sfide resteranno, e tutti potranno usare subito di nuovo /grow. Continuare?"
+    warning: "Questa operazione azzera tutte le lunghezze degli hot dog nella chat e reimposta i tentativi odierni di /grow e /dod. Le statistiche delle sfide e i vincitori dei giorni precedenti resteranno. Continuare?"
     buttons:
       confirm: "Azzera lunghezze"
       cancel: "Annulla"

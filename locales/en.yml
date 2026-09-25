@@ -50,7 +50,7 @@ commands:
     personal: "<i>Your personal statistics:</i>\n— Number of the chats in which you play: <b>%{chats}</b>.\n— Maximum length: <b>%{max_length}″</b>.\n— Sum of hotdogs across all the chats: <b>%{total_length}″</b>."
   reset:
     description: "Reset every hotdog length in this chat"
-    warning: "This permanently deletes every player's hotdog length in this chat. Daily winners and battle statistics will be kept, and everyone can use /grow again immediately. Continue?"
+    warning: "Every hotdog length in this chat will be set to zero. Today's /grow and /dod attempts will be reset; battle statistics and previous daily winners will be kept. Continue?"
     buttons:
       confirm: "Reset lengths"
       cancel: "Cancel"

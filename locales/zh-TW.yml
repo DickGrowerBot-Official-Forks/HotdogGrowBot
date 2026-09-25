@@ -41,7 +41,7 @@ commands:
     personal: "<i>你的個人統計:</i>\n— 你參與的遊戲聊天數量: <b>%{chats}</b>。\n— 最大長度: <b>%{max_length}″</b>。\n— 所有聊天中的熱狗總長度: <b>%{total_length}″</b>。"
   reset:
     description: "重設本群所有熱狗長度"
-    warning: "這將永久刪除本群所有玩家的熱狗長度。每日獲勝記錄和對戰統計會保留，所有人都可以立即再次使用 /grow。是否繼續？"
+    warning: "本群所有玩家的熱狗長度都將歸零。今天的 /grow 和 /dod 次數將重設；對戰統計和之前的每日獲勝者會保留。是否繼續？"
     buttons:
       confirm: "重設長度"
       cancel: "取消"
