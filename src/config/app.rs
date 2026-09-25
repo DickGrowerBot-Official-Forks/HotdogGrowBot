@@ -11,7 +11,6 @@ pub struct AppConfig {
     pub features: FeatureToggles,
     pub top_limit: Limit,
     pub inactivity_days: DaysCount,
-    pub loan_payout_ratio: Ratio,
     pub dod_rich_exclusion_ratio: Option<Ratio>,
     pub pvp_default_bet: Bet,
     pub announcements: AnnouncementsConfig,
@@ -28,12 +27,10 @@ impl AppConfig {
     pub fn from_env() -> Self {
         let top_limit = get_env_value_or_default("TOP_LIMIT", Limit::literal(10));
         let inactivity_days = get_env_value_or_default("INACTIVITY_DAYS", DaysCount::new(7));
-        let loan_payout_ratio = get_env_value_or_default("LOAN_PAYOUT_COEF", Ratio::literal(0.0));
         let dod_selection_mode = get_optional_env_value("DOD_SELECTION_MODE");
         let dod_rich_exclusion_ratio = get_optional_env_ratio("DOD_RICH_EXCLUSION_RATIO");
         let chats_merging = get_env_value_or_default("CHATS_MERGING_ENABLED", false);
         let top_unlimited = get_env_value_or_default("TOP_UNLIMITED_ENABLED", false);
-        let multiple_loans = get_env_value_or_default("MULTIPLE_LOANS_ENABLED", false);
         let pvp_default_bet = get_env_value_or_default("PVP_DEFAULT_BET", Bet::literal(1));
         let check_acceptor_length = get_env_value_or_default("PVP_CHECK_ACCEPTOR_LENGTH", false);
         let callback_locks = get_env_value_or_default("PVP_CALLBACK_LOCKS_ENABLED", true);
@@ -49,7 +46,6 @@ impl AppConfig {
             features: FeatureToggles {
                 chats_merging,
                 top_unlimited,
-                multiple_loans,
                 dod_selection_mode,
                 pvp: BattlesFeatureToggles {
                     check_acceptor_length,
@@ -60,7 +56,6 @@ impl AppConfig {
             },
             top_limit,
             inactivity_days,
-            loan_payout_ratio,
             dod_rich_exclusion_ratio,
             pvp_default_bet,
             announcements: AnnouncementsConfig {

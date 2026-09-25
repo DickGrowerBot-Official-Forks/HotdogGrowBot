@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use futures::TryFutureExt;
 use sqlx::{Executor, Pool, Postgres, Transaction};
 use crate::config::FeatureToggles;
@@ -61,18 +61,6 @@ impl Dicks {
         Ok(GrowthResult { new_length: Length::new(new_length), pos_in_top })
     }
 
-    pub async fn fetch_length(&self, uid: UserId, chat_id: &ChatIdKind) -> anyhow::Result<Length> {
-        sqlx::query_scalar!("SELECT d.length FROM Dicks d \
-                JOIN Chats c ON d.chat_id = c.id \
-                WHERE uid = $1 AND \
-                    (c.chat_id = $2::bigint OR c.chat_instance = $2::text)",
-                uid as UserId, chat_id.value() as String)
-            .fetch_optional(&self.pool)
-            .await
-            .map(|maybe_length| maybe_length.map(Length::new).unwrap_or_default())
-            .context(format!("couldn't fetch length for {chat_id} and {uid}"))
-    }
-
     pub async fn fetch_dick(&self, uid: UserId, chat_id: &ChatIdKind) -> anyhow::Result<Option<Dick>> {
         sqlx::query_as!(DickEntity,
             r#"SELECT length AS "length: Length", uid AS "owner_uid: UserId", name as owner_name, updated_at as grown_at, position FROM (
@@ -130,7 +118,7 @@ impl Dicks {
             .fetch_optional(&self.pool)
             .map_ok(|opt| opt.unwrap_or(false))
             .await
-            .context(format!("couldn't check the dick {chat_id}, {user_id} to have at least {length} cm"))
+            .context(format!("couldn't check the dick {chat_id}, {user_id} to have at least {length} in"))
     }
 
     pub async fn move_length(&self, chat_id: &ChatIdPartiality, from: UserId, to: UserId, length: Bet) -> anyhow::Result<(GrowthResult, GrowthResult)> {
@@ -183,16 +171,6 @@ impl Dicks {
             .map(|pos| Some(Position::new(pos as u64)))
             .context(format!("couldn't get the top for {chat_id_internal} and {uid}"))
     }
-    
-    pub async fn grow_no_attempts_check(&self, chat_id: &ChatIdKind, user_id: UserId, change: LengthChange) -> anyhow::Result<GrowthResult> {
-        let chat_internal_id = self.chats.get_internal_id(chat_id).await?;
-
-        let new_length = Self::grow_no_attempts_check_internal(&self.pool, chat_internal_id, user_id, change).await?
-            .ok_or(anyhow!("couldn't find a dick of ({chat_id}, {user_id}) for some reason"))?;
-        let pos_in_top = self.get_position_in_top(chat_internal_id, user_id).await?;
-        
-        Ok(GrowthResult { new_length, pos_in_top })
-    }
 
     pub(super) async fn grow_no_attempts_check_internal<'c, E>(executor: E, chat_id_internal: InternalChatId, user_id: UserId, bonus: LengthChange) -> anyhow::Result<Option<Length>>
     where E: Executor<'c, Database = Postgres>,
@@ -215,5 +193,21 @@ impl Dicks {
             .await
             .context(format!("couldn't insert to DOD table for {chat_id_internal} and {user_id}"))?;
         Ok(())
+    }
+
+    // TODO: Confirm whether reset should preserve leaderboard entries by setting length to zero instead of deleting rows.
+    // An UPDATE must also define daily-attempt behavior and account for the check_and_update_dicks_timestamp trigger.
+    pub async fn reset_chat(&self, chat_id: &ChatIdKind) -> anyhow::Result<u64> {
+        let deleted_dicks = sqlx::query!(
+            "DELETE FROM Dicks WHERE chat_id = (
+                SELECT id FROM Chats WHERE chat_id = $1::bigint OR chat_instance = $1::text
+            )",
+            chat_id.value() as String
+        )
+            .execute(&self.pool)
+            .await
+            .context(format!("couldn't reset hotdog lengths for {chat_id}"))?
+            .rows_affected();
+        Ok(deleted_dicks)
     }
 }

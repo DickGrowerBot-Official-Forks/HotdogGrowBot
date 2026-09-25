@@ -15,8 +15,7 @@ use teloxide::types::ParseMode::Html;
 use crate::config::AppConfig;
 use crate::domain::primitives::{LanguageCode, Page, UserId as DomainUserId, Username};
 use crate::domain::primitives::chat::{ChatIdFull, ChatIdSource, TelegramChatId, TelegramChatInstanceId};
-use crate::handlers::{build_pagination_keyboard, dick, dod, FromRefs, HandlerImplResult, HandlerResult, loan, stats, utils, pvp};
-use crate::handlers::utils::callbacks::CallbackDataWithPrefix;
+use crate::handlers::{build_pagination_keyboard, dick, dod, FromRefs, HandlerResult, stats, utils, pvp};
 use crate::handlers::utils::Incrementor;
 use crate::metrics;
 use crate::repo::{NoChatIdError, Repositories};
@@ -27,22 +26,12 @@ enum InlineCommand {
     Grow,
     Top,
     DickOfDay,
-    Loan,
     Stats,
 }
 
 struct InlineResult {
     text: String,
     keyboard: Option<InlineKeyboardMarkup>,
-}
-
-impl <D: CallbackDataWithPrefix> From<HandlerImplResult<D>> for InlineResult {
-    fn from(value: HandlerImplResult<D>) -> Self {
-        Self {
-            text: value.text(),
-            keyboard: value.keyboard()
-        }
-    }
 }
 
 impl InlineResult {
@@ -79,12 +68,6 @@ impl InlineCommand {
                 dod::dick_of_day_impl(config, repos, incr, from_refs)
                     .await
                     .map(InlineResult::text)
-            },
-            InlineCommand::Loan => {
-                metrics::CMD_LOAN_COUNTER.invoked.inline.inc();
-                loan::loan_impl(repos, from_refs, config)
-                    .await
-                    .map(InlineResult::from)
             },
             InlineCommand::Stats => {
                 metrics::CMD_STATS.inline.inc();

@@ -16,6 +16,7 @@ repository!(Users,
             .context(format!("couldn't upsert a user with id = {user_id}"))
     }
 ,
+    #[cfg(test)]
     pub async fn get_chat_members(&self, chat_id: &ChatIdKind) -> anyhow::Result<Vec<User>> {
         sqlx::query_as!(User,
             r#"SELECT u.uid AS "uid: UserId", name AS "name: Username", created_at FROM Users u

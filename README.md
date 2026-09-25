@@ -1,32 +1,25 @@
-[@DickGrowerBot](https://t.me/DickGrowerBot)
-============================================
+[@hotdoggrow](https://t.me/hotdoggrow)
+========================================
 
-[![CI Build](https://github.com/kozalosev/DickGrowerBot/actions/workflows/ci-build.yaml/badge.svg?branch=main&event=push)](https://github.com/kozalosev/DickGrowerBot/actions/workflows/ci-build.yaml) [![@DickGrowerBot MAU](https://tgbotmau.quoi.dev/api/bot/DickGrowerBot/mau/badge?style=flat "@DickGrowerBot MAU")](https://tgbotmau.quoi.dev/?bot=DickGrowerBot)
+[![CI Build](https://github.com/DickGrowerBot-Official-Forks/HotdogGrowBot/actions/workflows/ci-build.yaml/badge.svg?branch=main&event=push)](https://github.com/DickGrowerBot-Official-Forks/HotdogGrowBot/actions/workflows/ci-build.yaml) [![@hotdoggrow MAU](https://tgbotmau.quoi.dev/api/bot/hotdoggrow/mau/badge?style=flat "@hotdoggrow MAU")](https://tgbotmau.quoi.dev/?bot=hotdoggrow)
 
-A game bot for group chats that let its users grow their virtual "dicks" every day for some random count of centimeters (including negative values) and compete with friends and other chat members.
+A game bot for group chats that lets its users grow virtual hotdogs every day by a random number of inches (including negative values) and compete with friends and other chat members.
 
 Additional mechanics
 --------------------
 _(compared with some competitors)_
 
-* **The Dick of the Day** daily contest to grow a randomly chosen dick for a bit more.
+* **The Hotdog of the Day** daily contest to grow a randomly chosen hotdog for a bit more.
 * A way to play the game without the necessity to add the bot into a group (via inline queries with a callback button).
-* Import from _@pipisabot_ and _@kraft28_bot_ (not tested! help of its users is required).
 * PvP fights with statistics.
+* An owner-only `/reset` command restarts a chat's competition while keeping its battle and daily-winner history.
 
-### Soon (but not very, I guess)
-* an option to show mercy and return the award for the battle back;
-* support for those who loses battles the most;
-* more perks;
-* achievements;
-* referral promo codes;
-* global monthly events;
-* a shop.
+Forked from [DickGrowerBot](https://github.com/kozalosev/DickGrowerBot). The original attribution and license remain in [LICENSE](LICENSE).
 
 Features
 --------
 * true system random from the environment's chaos by usage of the `get_random()` syscall (`BCryptGenRandom` on Windows, or other alternatives on different OSes);
-* English and Russian translations;
+* English, Russian, Italian, Persian, and Chinese translations;
 * Prometheus-like metrics.
 
 Technical stuff

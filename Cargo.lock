@@ -760,45 +760,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dick-grower-bot"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "axum",
- "axum-prometheus",
- "base64 0.22.1",
- "byteorder",
- "chrono",
- "derive_more 2.1.1",
- "domain_types",
- "domain_types_macro",
- "dotenvy",
- "downcast-rs",
- "flurry",
- "futures",
- "log",
- "num-traits",
- "once_cell",
- "pretty_env_logger",
- "prometheus",
- "rand 0.10.2",
- "regex",
- "reqwest 0.13.4",
- "rust-i18n",
- "serde",
- "sha2 0.11.0",
- "sqlx",
- "strum",
- "strum_macros",
- "teloxide",
- "testcontainers",
- "tinytemplate",
- "tokio",
- "unicode-general-category",
-]
-
-[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -858,12 +819,6 @@ name = "dotenvy"
 version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
-
-[[package]]
-name = "downcast-rs"
-version = "2.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "117240f60069e65410b3ae1bb213295bd828f707b5bec6596a1afc8793ce0cbc"
 
 [[package]]
 name = "dptree"
@@ -1363,6 +1318,42 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5444c27eef6923071f7ebcc33e3444508466a76f7a2b93da00ed6e19f30c1ddb"
 dependencies = [
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "hotdog-grow-bot"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "axum-prometheus",
+ "base64 0.22.1",
+ "byteorder",
+ "chrono",
+ "derive_more 2.1.1",
+ "domain_types",
+ "domain_types_macro",
+ "dotenvy",
+ "flurry",
+ "futures",
+ "log",
+ "num-traits",
+ "once_cell",
+ "pretty_env_logger",
+ "prometheus",
+ "rand 0.10.2",
+ "reqwest 0.13.4",
+ "rust-i18n",
+ "serde",
+ "sha2 0.11.0",
+ "sqlx",
+ "strum",
+ "strum_macros",
+ "teloxide",
+ "testcontainers",
+ "tinytemplate",
+ "tokio",
+ "unicode-general-category",
 ]
 
 [[package]]

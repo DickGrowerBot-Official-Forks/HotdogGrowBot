@@ -11,8 +11,8 @@ use teloxide::types::User as TeloxideUser;
 use crate::handlers::{reply_html, send_error_callback_answer, utils, CallbackResult, HandlerResult};
 use crate::{metrics, reply_html, repo};
 use crate::config::{AppConfig, BattlesFeatureToggles};
-use crate::domain::objects::{BattleStats, GrowthResult, User, WinRateAware};
-use crate::domain::primitives::{Bet, LanguageCode, LengthChange, LoanPayout, UserId, Username};
+use crate::domain::objects::{BattleStats, User, WinRateAware};
+use crate::domain::primitives::{Bet, LanguageCode, UserId, Username};
 use crate::domain::primitives::chat::{ChatIdPartiality, TelegramChatId};
 use crate::handlers::utils::callbacks;
 use crate::handlers::utils::callbacks::{CallbackDataWithPrefix, InvalidCallbackDataBuilder, NewLayoutValue};
@@ -309,16 +309,6 @@ async fn pvp_impl_attack(p: BattleParams, initiator: UserId, acceptor: UserInfo,
             })
             .map(|s| format!("\n\n{s}"))
             .unwrap_or_default();
-        
-        let (winner_res, withheld_part) = pay_for_loan_if_needed(&p, winner, bet).await
-            .inspect_err(|e| log::error!("couldn't pay for a loan from a battle award: {e}"))
-            .ok().flatten()
-            .filter(|(_, withheld)| *withheld > 0)
-            .map(|(res, withheld)| {
-                let withheld_part = format!("\n\n{}", t!("commands.pvp.results.withheld", locale = &p.lang_code, payout = withheld));
-                (res, withheld_part)
-            })
-            .unwrap_or((winner_res, String::default()));
 
         let winner_info = get_user_info(&p.repos.users, winner, &acceptor).await?;
         let loser_info = get_user_info(&p.repos.users, loser, &acceptor).await?;
@@ -331,7 +321,7 @@ async fn pvp_impl_attack(p: BattleParams, initiator: UserId, acceptor: UserInfo,
         } else {
             main_part.to_string()
         };
-        CallbackResult::EditMessage(format!("{text}{withheld_part}{battle_stats}"), None)
+        CallbackResult::EditMessage(format!("{text}{battle_stats}"), None)
     } else if enough_acceptor {
         let text = t!("commands.pvp.errors.not_enough.initiator", locale = &p.lang_code).to_string();
         CallbackResult::EditMessage(text, None)
@@ -359,25 +349,6 @@ async fn get_user_info(users: &repo::Users, user_uid: UserId, acceptor: &UserInf
             .into()
     };
     Ok(user)
-}
-
-async fn pay_for_loan_if_needed(p: &BattleParams, winner_id: UserId, award: Bet) -> anyhow::Result<Option<(GrowthResult, LoanPayout)>> {
-    let chat_id_kind = p.chat_id.kind();
-    let loan = match p.repos.loans.get_active_loan(winner_id, &chat_id_kind).await? {
-        Some(loan) => loan,
-        None => return Ok(None)
-    };
-    // the ratio is within [0; 1], so the payout never exceeds the award
-    let payout_value = (loan.payout_ratio.value() * f64::from(award.value())).round() as i64;
-    let payout_value = payout_value.min(loan.debt.value());
-    let payout = LoanPayout::new(payout_value.clamp(0, i32::MAX as i64) as i32)
-        .expect("loan payout is non-negative by construction");
-
-    p.repos.loans.pay(winner_id, &chat_id_kind, payout).await?;
-
-    let withheld = LengthChange::signed(-i64::from(payout.value()));
-    let growth_res = p.repos.dicks.grow_no_attempts_check(&chat_id_kind, winner_id, withheld).await?;
-    Ok(Some((growth_res, payout)))
 }
 
 pub fn new_short_timestamp() -> NewLayoutValue<i64> {

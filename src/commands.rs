@@ -5,7 +5,7 @@ use teloxide::requests::Requester;
 use teloxide::types::{BotCommand, BotCommandScope};
 use teloxide::utils::command::BotCommands;
 use crate::config::CachedEnvToggles;
-use crate::handlers::{DickCommands, DickOfDayCommands, HelpCommands, ImportCommands, LoanCommands, PrivacyCommands, PromoCommands};
+use crate::handlers::{DickCommands, DickOfDayCommands, HelpCommands, PrivacyCommands, ResetCommands};
 use crate::handlers::pvp::BattleCommands;
 use crate::handlers::stats::StatsCommands;
 
@@ -20,7 +20,6 @@ pub async fn set_my_commands(bot: &Bot, lang_code: &str, toggles: &CachedEnvTogg
     let personal_commands = vec![
         HelpCommands::bot_commands(),
         PrivacyCommands::bot_commands(),
-        PromoCommands::bot_commands(),
         StatsCommands::bot_commands(),
     ];
     let group_commands = vec![
@@ -28,11 +27,10 @@ pub async fn set_my_commands(bot: &Bot, lang_code: &str, toggles: &CachedEnvTogg
         DickCommands::bot_commands(),
         DickOfDayCommands::bot_commands(),
         BattleCommands::bot_commands(),
-        LoanCommands::bot_commands(),
         StatsCommands::bot_commands(),
     ];
     let admin_commands = [group_commands.clone(), vec![
-        ImportCommands::bot_commands(),
+        ResetCommands::bot_commands(),
     ]].concat();
 
     let requests = vec![
@@ -50,7 +48,13 @@ pub async fn set_my_commands(bot: &Bot, lang_code: &str, toggles: &CachedEnvTogg
         .unwrap_or(Ok(()))
 }
 
-async fn set_commands(bot: &Bot, commands: Vec<Vec<BotCommand>>, scope: BotCommandScope, lang_code: &str, toggles: &CachedEnvToggles) -> Result<(), RequestError> {
+async fn set_commands(
+    bot: &Bot,
+    commands: Vec<Vec<BotCommand>>,
+    scope: BotCommandScope,
+    lang_code: &str,
+    toggles: &CachedEnvToggles,
+) -> Result<(), RequestError> {
     let commands: Vec<BotCommand> = commands
         .concat()
         .into_iter()

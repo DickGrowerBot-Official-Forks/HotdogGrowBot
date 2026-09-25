@@ -16,7 +16,6 @@ pub enum DickOfDaySelectionMode {
 pub struct FeatureToggles {
     pub chats_merging: bool,
     pub top_unlimited: bool,
-    pub multiple_loans: bool,
     pub dod_selection_mode: DickOfDaySelectionMode,
     pub pvp: BattlesFeatureToggles,
 }
@@ -27,7 +26,6 @@ impl Default for FeatureToggles {
         Self {
             chats_merging: true,
             top_unlimited: true,
-            multiple_loans: false,
             dod_selection_mode: Default::default(),
             pvp: Default::default(),
         }

@@ -8,7 +8,6 @@ positive_number!(PositiveLength, i64);
 positive_number!(LengthIncrement, i64);
 
 positive_number!(Bet, i32);
-positive_number!(LoanPayout, i32);
 
 #[domain_type(number, features(no_auto_display))]
 struct SignedLengthChange(i64);

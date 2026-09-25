@@ -51,18 +51,17 @@ pub(crate) async fn dick_of_day_impl(cfg: config::AppConfig, repos: &repo::Repos
     };
     let answer = match winner {
         Some(winner) => {
-            let increment = incr.dod_increment(winner.uid, chat_id.kind()).await;
-            let dod_result = repos.dicks.set_dod_winner(chat_id, winner.uid, increment.total).await;
+            let increment = incr.dod_increment();
+            let dod_result = repos.dicks.set_dod_winner(chat_id, winner.uid, increment).await;
             let main_part = match dod_result {
                 Ok(Some(GrowthResult { new_length, pos_in_top })) => {
                     let answer = t!("commands.dod.result", locale = &lang_code,
-                        uid = winner.uid, name = winner.name.escaped(), growth = increment.total, length = new_length);
-                    let perks_part = increment.perks_part_of_answer(&lang_code);
+                        uid = winner.uid, name = winner.name.escaped(), growth = increment, length = new_length);
                     if let Some(pos) = pos_in_top {
                         let position = t!("commands.dod.position", locale = &lang_code, pos = pos);
-                        format!("{answer}\n{position}{perks_part}")
+                        format!("{answer}\n{position}")
                     } else {
-                        format!("{answer}{perks_part}")
+                        answer.to_string()
                     }
                 },
                 Ok(None) => {

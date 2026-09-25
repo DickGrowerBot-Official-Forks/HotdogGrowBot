@@ -59,7 +59,8 @@ pub async fn dick_cmd_handler(bot: Bot, msg: Message, cmd: DickCommands,
 
 pub struct FromRefs<'a>(pub &'a TeloxideUser, pub &'a ChatIdPartiality);
 
-pub(crate) async fn grow_impl(repos: &repo::Repositories, incr: Incrementor, from_refs: FromRefs<'_>) -> anyhow::Result<String> {
+pub(crate) async fn grow_impl(repos: &repo::Repositories, incr: Incrementor,
+                              from_refs: FromRefs<'_>) -> anyhow::Result<String> {
     let (from, chat_id) = (from_refs.0, from_refs.1);
     let uid = UserId::from(from);
     let name = utils::get_full_name(from);
@@ -68,23 +69,22 @@ pub(crate) async fn grow_impl(repos: &repo::Repositories, incr: Incrementor, fro
     let days_since_registration = days_since_registration.num_days().to_u32()
         .map(DaysCount::new)
         .ok_or_else(|| anyhow!("days since registration are too much: {days_since_registration}"))?;
-    let increment = incr.growth_increment(uid, chat_id.kind(), days_since_registration).await;
-    let grow_result = repos.dicks.create_or_grow(uid, chat_id, increment.total).await;
+    let increment = incr.growth_increment(days_since_registration);
+    let grow_result = repos.dicks.create_or_grow(uid, chat_id, increment).await;
     let lang_code = LanguageCode::from_user(from);
 
     let main_part = match grow_result {
         Ok(GrowthResult { new_length, pos_in_top }) => {
-            let event_key = if increment.total.value().is_negative() { "shrunk" } else { "grown" };
+            let event_key = if increment.value().is_negative() { "shrunk" } else { "grown" };
             let event_template = format!("commands.grow.direction.{event_key}");
             let event = t!(&event_template, locale = &lang_code);
             let answer = t!("commands.grow.result", locale = &lang_code,
-                event = event, incr = increment.total.value().abs(), length = new_length);
-            let perks_part = increment.perks_part_of_answer(&lang_code);
+                event = event, incr = increment.value().abs(), length = new_length);
             if let Some(pos) = pos_in_top {
                 let position = t!("commands.grow.position", locale = &lang_code, pos = pos);
-                format!("{answer}\n{position}{perks_part}")
+                format!("{answer}\n{position}")
             } else {
-                format!("{answer}{perks_part}")
+                answer.to_string()
             }
         },
         Err(e) => {

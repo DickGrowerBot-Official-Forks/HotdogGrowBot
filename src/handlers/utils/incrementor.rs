@@ -1,22 +1,13 @@
-use std::collections::HashMap;
 use std::ops::RangeInclusive;
-use std::sync::Arc;
-use async_trait::async_trait;
-use derive_more::Display;
-use downcast_rs::{Downcast, impl_downcast};
 use num_traits::PrimInt;
 use rand::distr::uniform::SampleUniform;
 use rand::RngExt;
-use rust_i18n::t;
-use crate::{config, repo};
-use crate::domain::primitives::chat::ChatIdKind;
-use crate::domain::primitives::{DaysCount, Length, LengthChange, Ratio, SignedLengthChange, UserId};
+use crate::config;
+use crate::domain::primitives::{DaysCount, LengthChange, Ratio, SignedLengthChange};
 
 #[derive(Clone)]
 pub struct Incrementor {
     config: Config,
-    perks: Vec<Arc<dyn Perk>>,
-    dicks: repo::Dicks,
 }
 
 #[derive(Clone)]
@@ -25,57 +16,6 @@ pub struct Config {
     grow_shrink_ratio: Ratio,
     newcomers_grace_days: DaysCount,
     dod_bonus_range: RangeInclusive<u8>,
-}
-
-#[async_trait]
-pub trait Perk: Send + Sync + Downcast {
-    fn name(&self) -> &str;
-    async fn apply(&self, dick_id: &DickId, change_intent: ChangeIntent) -> AdditionalChange;
-
-    fn enabled(&self) -> bool {
-        let env_key = format!("DISABLE_{}", self.name().to_uppercase().replace('-', "_"));
-        !config::get_env_value_or_default(&env_key, false)
-    }
-}
-impl_downcast!(Perk);
-
-pub trait ConfigurablePerk: Perk {
-    type Config;
-
-    fn get_config(&self) -> Self::Config;
-}
-
-#[derive(Display, Clone, Hash, PartialEq)]
-#[display("(user_id={_0}, chat_id={_1})")]
-pub struct DickId(pub(crate) UserId, pub(crate) ChatIdKind);
-
-#[derive(Copy, Clone)]
-pub struct ChangeIntent {
-    pub current_length: Length,
-    pub base_increment: LengthChange,
-}
-
-#[derive(Copy, Clone)]
-pub struct AdditionalChange(pub LengthChange);
-
-impl AdditionalChange {
-    pub fn zero() -> Self {
-        Self(LengthChange::signed(0))
-    }
-}
-
-pub struct Increment {
-    pub base: LengthChange,
-    pub by_perks: HashMap<String, SignedLengthChange>,
-    pub total: LengthChange,
-}
-
-type BaseIncrement = SignedLengthChange;
-
-impl BaseIncrement {
-    fn only(self) -> Increment {
-        Increment::of_base(LengthChange::from(self))
-    }
 }
 
 impl Config {
@@ -93,16 +33,10 @@ impl Config {
 }
 
 impl Incrementor {
-    pub fn from_env(dicks: &repo::Dicks, perks: Vec<Box<dyn Perk>>) -> Self {
-        let growth_range_min = config::get_env_value_or_default("GROWTH_MIN", -5);
-        let growth_range_max = config::get_env_value_or_default("GROWTH_MAX", 10);
+    pub fn from_env() -> Self {
+        let growth_range_min = config::get_env_value_or_default("GROWTH_MIN", -3);
+        let growth_range_max = config::get_env_value_or_default("GROWTH_MAX", 12);
         let dod_max_bonus = config::get_env_value_or_default("GROWTH_DOD_BONUS_MAX", 5);
-        
-        let perks = perks
-            .into_iter()
-            .filter(|perk| perk.enabled())
-            .map(Arc::from)
-            .collect();
 
         Self {
             config: Config {
@@ -111,8 +45,6 @@ impl Incrementor {
                 newcomers_grace_days: config::get_env_value_or_default("NEWCOMERS_GRACE_DAYS", DaysCount::new(7)),
                 dod_bonus_range: 1..=dod_max_bonus,
             },
-            perks,
-            dicks: dicks.clone(),
         }
     }
 
@@ -120,100 +52,19 @@ impl Incrementor {
         self.config.clone()
     }
 
-    pub fn find_perk_config<P: ConfigurablePerk>(&self) -> Option<P::Config> {
-        self.perks.iter()
-            .find(|p| p.is::<P>())
-            .and_then(|p| p.downcast_ref::<P>())
-            .map(ConfigurablePerk::get_config)
-    }
-
-    #[cfg(test)]
-    fn set_perks(&mut self, perks: Vec<Box<dyn Perk>>) {
-        self.perks = perks.into_iter()
-            .map(Arc::from)
-            .collect();
-    }
-
-    pub async fn growth_increment(&self, user_id: UserId, chat_id: ChatIdKind, days_since_registration: DaysCount) -> Increment {
-        let dick_id = DickId(user_id, chat_id);
+    pub fn growth_increment(&self, days_since_registration: DaysCount) -> LengthChange {
         let grow_shrink_ratio = if days_since_registration > self.config.newcomers_grace_days {
             self.config.grow_shrink_ratio
         } else {
             Ratio::literal(1.0)
         };
-        let base_incr = get_base_increment(self.config.growth_range.clone(), grow_shrink_ratio);
-        self.add_additional_incr(dick_id, SignedLengthChange::new(base_incr.into())).await
+        let base = get_base_increment(self.config.growth_range.clone(), grow_shrink_ratio);
+        SignedLengthChange::new(base.into()).into()
     }
 
-    pub async fn dod_increment(&self, user_id: UserId, chat_id: ChatIdKind) -> Increment {
-        let dick_id = DickId(user_id, chat_id);
-        let base_incr = rand::rng().random_range(self.config.dod_bonus_range.clone());
-        self.add_additional_incr(dick_id, SignedLengthChange::new(base_incr.into())).await
-    }
-
-    async fn add_additional_incr(&self, dick: DickId, base_increment: BaseIncrement) -> Increment {
-        let current_length = match self.dicks.fetch_length(dick.0, &dick.1).await {
-            Ok(length) => length,
-            Err(e) => {
-                log::error!("couldn't fetch the length of a dick: {e}");
-                return base_increment.only()
-            }
-        };
-        let base = LengthChange::from(base_increment);
-        let change_intent = ChangeIntent {
-            base_increment: base,
-            current_length,
-        };
-
-        let mut additional_change = SignedLengthChange::new(0);
-        let mut by_perks = HashMap::new();
-        for perk in self.perks.iter() {
-            let AdditionalChange(ac) = perk.apply(&dick, change_intent).await;
-            if !ac.is_zero() {
-                by_perks.insert(perk.name().to_owned(), SignedLengthChange::new(ac.value()));
-            }
-            // saturating addition: a perk pushing the sum out of i64 bounds clamps it
-            // instead of wrapping; the checked addition below still decides the outcome
-            additional_change += ac.value()
-        }
-
-        let total = (base + additional_change)
-            .inspect_err(|e| log::error!("overflow on increment calculation for {dick}: {e}"))
-            .unwrap_or(base);
-
-        if base == total && !additional_change.is_zero() {
-            log::info!("The following perks affected the calculation: {by_perks:?}");
-            by_perks.clear();
-        }
-
-        Increment { base, by_perks, total }
-    }
-}
-
-impl Increment {
-    fn of_base(base: LengthChange) -> Self {
-        Self {
-            base,
-            by_perks: HashMap::default(),
-            total: base,
-        }
-    }
-
-    pub fn perks_part_of_answer(&self, lang_code: &str) -> String {
-        if self.base.value() != self.total.value() {
-            let top_line = t!("titles.perks.top_line", locale = lang_code);
-            let perks = self.by_perks.iter()
-                .map(|(perk, value)| {
-                    let t_key = format!("titles.perks.{perk}");
-                    let name = t!(&t_key, locale = lang_code);
-                    format!("— {name} ({value:+})")
-                })
-                .collect::<Vec<String>>()
-                .join("\n");
-            format!("\n\n{top_line}:\n{perks}")
-        } else {
-            String::default()
-        }
+    pub fn dod_increment(&self) -> LengthChange {
+        let base = rand::rng().random_range(self.config.dod_bonus_range.clone());
+        SignedLengthChange::new(base.into()).into()
     }
 }
 
@@ -244,156 +95,38 @@ where
 }
 
 #[cfg(test)]
-mod test {
-    use crate::domain::primitives::Ratio;
-    use super::get_base_increment;
+mod tests {
+    use super::*;
 
-    #[test]
-    fn test_gen_increment() {
-        let increments: Vec<i32> = (0..100)
-            .map(|_| get_base_increment(-5..=10, Ratio::literal(0.5)))
-            .collect();
-        assert!(increments.iter().any(|n| n > &0));
-        assert!(increments.iter().any(|n| n < &0));
-        assert!(increments.iter().all(|n| n != &0));
-        assert!(increments.iter().all(|n| n <= &10));
-        assert!(increments.iter().all(|n| n >= &-5));
-    }
-
-    #[test]
-    fn test_gen_increment_with_positive_range() {
-        let increments: Vec<i32> = (0..100)
-            .map(|_| get_base_increment(5..=10, Ratio::literal(0.5)))
-            .collect();
-        assert!(increments.iter().all(|n| n <= &10));
-        assert!(increments.iter().all(|n| n >= &5));
-    }
-}
-
-#[cfg(test)]
-mod test_incrementor {
-    use std::iter::zip;
-
-    use async_trait::async_trait;
-    use futures::future::join_all;
-    use crate::domain::primitives::{DaysCount, LengthChange, Ratio};
-    use crate::handlers::utils::{AdditionalChange, ChangeIntent, Config, DickId, Incrementor, Perk};
-    use crate::repo;
-    use crate::repo::test::{CHAT_ID_KIND, start_postgres, USER_ID};
-
-    #[tokio::test]
-    async fn test_incrementor() {
-        let (_container, db) = start_postgres().await;
-        let dicks = repo::Dicks::new(db.clone(), Default::default());
-        let incr = Incrementor {
+    fn incrementor() -> Incrementor {
+        Incrementor {
             config: Config {
-                growth_range: -1..=1,
+                growth_range: -3..=12,
                 grow_shrink_ratio: Ratio::literal(0.5),
-                newcomers_grace_days: DaysCount::new(1),
-                dod_bonus_range: 1..=2,
+                newcomers_grace_days: DaysCount::new(7),
+                dod_bonus_range: 1..=5,
             },
-            dicks,
-            perks: Vec::default()
-        };
-
-        test_growth_increment_base(&incr).await;
-        test_dod_increment_base(&incr).await;
-        test_with_perks(&incr).await;
-        test_perk_with_overflow(&incr).await;
-    }
-
-    async fn test_growth_increment_base(incr: &Incrementor) {
-        let lazy_vals = (0..100)
-            .map(|_| incr.growth_increment(USER_ID, CHAT_ID_KIND, DaysCount::new(1)));
-        for fut in lazy_vals {
-            let val = fut.await;
-            assert_eq!(val.base, val.total);
-            assert_ne!(val.base.value(), 0);
-            assert!(val.base.value() >= -1);
-            assert!(val.base.value() <= 1);
-        }
-
-        let lazy_positive_vals = (0..100)
-            .map(|_| incr.growth_increment(USER_ID, CHAT_ID_KIND, DaysCount::new(0)));
-        for fut in lazy_positive_vals {
-            let val = fut.await;
-            assert_eq!(val.base, val.total);
-            assert!(val.base.value() > 0);
         }
     }
 
-    async fn test_dod_increment_base(incr: &Incrementor) {
-        let val = (0..100)
-            .map(|_| incr.dod_increment(USER_ID, CHAT_ID_KIND));
-        let val = join_all(val).await;
-        assert!(val.iter().all(|n| { n.base == n.total }));
-        assert!(val.iter().all(|n| { n.base.value() == 1 || n.base.value() == 2 }))
+    #[test]
+    fn growth_stays_in_configured_non_zero_range() {
+        let incr = incrementor();
+        let values: Vec<_> = (0..200).map(|_| incr.growth_increment(DaysCount::new(8)).value()).collect();
+        assert!(values.iter().all(|value| (-3..=12).contains(value) && *value != 0));
+        assert!(values.iter().any(|value| *value < 0));
+        assert!(values.iter().any(|value| *value > 0));
     }
 
-    #[derive(Clone)]
-    struct AddPerk {
-        value: i64,
-        name: String,
+    #[test]
+    fn newcomers_only_receive_positive_growth() {
+        let incr = incrementor();
+        assert!((0..200).all(|_| incr.growth_increment(DaysCount::new(7)).value() > 0));
     }
 
-    impl AddPerk {
-        fn boxed(value: i64) -> Box<Self> {
-            Box::new(Self {
-                value,
-                name: format!("add-perk-{value}")
-            })
-        }
-    }
-
-    #[async_trait]
-    impl Perk for AddPerk {
-        fn name(&self) -> &str {
-            &self.name
-        }
-
-        async fn apply(&self, _: &DickId, _: ChangeIntent) -> AdditionalChange {
-            AdditionalChange(LengthChange::signed(self.value))
-        }
-
-        fn enabled(&self) -> bool {
-            true
-        }
-    }
-
-    async fn test_with_perks(incr: &Incrementor) {
-        let mut incr = incr.clone();
-        let perk_plus2 = AddPerk::boxed(2);
-        let perk_minus1 = AddPerk::boxed(-1);
-        incr.set_perks(vec![perk_plus2.clone(), perk_minus1.clone()]);
-
-        let growth_lazy_vals = (0..100)
-            .map(|_| incr.growth_increment(USER_ID, CHAT_ID_KIND, DaysCount::new(1)));
-        let dod_lazy_vals = (0..100)
-            .map(|_| incr.dod_increment(USER_ID, CHAT_ID_KIND));
-
-        macro_rules! assertions {
-            ($val:ident) => {
-                assert_eq!($val.total.value() - $val.base.value(), 1);
-                assert_eq!($val.by_perks[perk_plus2.name()], 2);
-                assert_eq!($val.by_perks[perk_minus1.name()], -1);
-            };
-        }
-
-        for (growth_fut, dod_fut) in zip(growth_lazy_vals, dod_lazy_vals) {
-            let (growth_val, dod_val) = (growth_fut.await, dod_fut.await);
-            assertions!(growth_val);
-            assertions!(dod_val);
-        }
-    }
-    
-    async fn test_perk_with_overflow(incr: &Incrementor) {
-        let mut incr = incr.clone();
-        // lengths are i64 now, so only an i64 overflow triggers the fallback
-        let perk_add_max_int = AddPerk::boxed(i64::MAX);
-        incr.set_perks(vec![perk_add_max_int.clone()]);
-
-        let increment = incr.dod_increment(USER_ID, CHAT_ID_KIND).await;
-        assert_eq!(increment.base, increment.total);
-        assert!(increment.by_perks.is_empty());
+    #[test]
+    fn dod_bonus_stays_in_configured_range() {
+        let incr = incrementor();
+        assert!((0..200).all(|_| (1..=5).contains(&incr.dod_increment().value())));
     }
 }

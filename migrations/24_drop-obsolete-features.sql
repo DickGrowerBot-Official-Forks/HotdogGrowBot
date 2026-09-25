@@ -1,0 +1,6 @@
+BEGIN;
+    DROP TABLE IF EXISTS Promo_Code_Activations;
+    DROP TABLE IF EXISTS Promo_Codes;
+    DROP TABLE IF EXISTS Loans;
+    DROP TABLE IF EXISTS Imports;
+COMMIT;

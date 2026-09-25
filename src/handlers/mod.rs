@@ -3,22 +3,18 @@ mod help;
 mod start;
 mod privacy;
 mod dod;
-mod import;
-mod promo;
 mod inline;
 pub mod utils;
 pub mod pvp;
-pub mod perks;
-pub mod loan;
+pub mod reset;
 pub mod stats;
 
-use derive_more::Constructor;
 use rust_i18n::t;
 use teloxide::Bot;
 use teloxide::payloads::{AnswerCallbackQuerySetters, SendMessage, SendMessageSetters};
 use teloxide::requests::{JsonRequest, Requester};
 use teloxide::sugar::request::RequestLinkPreviewExt;
-use teloxide::types::{CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message, ReplyParameters};
+use teloxide::types::{CallbackQuery, InlineKeyboardMarkup, Message, ReplyParameters};
 use teloxide::types::ParseMode::Html;
 
 pub use dick::*;
@@ -26,12 +22,9 @@ pub use help::*;
 pub use start::*;
 pub use privacy::*;
 pub use dod::*;
-pub use import::*;
 pub use inline::*;
-pub use promo::*;
-pub use loan::LoanCommands;
+pub use reset::ResetCommands;
 use crate::domain::primitives::LanguageCode;
-use crate::handlers::utils::callbacks::CallbackDataWithPrefix;
 
 pub type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
@@ -76,41 +69,6 @@ impl CallbackResult {
             }
         };
         Ok(())
-    }
-}
-
-pub enum HandlerImplResult<D: CallbackDataWithPrefix> {
-    WithKeyboard {
-        text: String,
-        buttons: Vec<CallbackButton<D>>
-    },
-    OnlyText(String)
-}
-
-#[derive(Constructor)]
-pub struct CallbackButton<D: CallbackDataWithPrefix> {
-    title: String,
-    data: D,
-}
-
-impl <D: CallbackDataWithPrefix> HandlerImplResult<D> {
-    pub fn text(&self) -> String {
-        match self {
-            HandlerImplResult::WithKeyboard { text, .. } => text,
-            HandlerImplResult::OnlyText(text) => text
-        }.clone()
-    }
-
-    pub fn keyboard(&self) -> Option<InlineKeyboardMarkup> {
-        match self {
-            HandlerImplResult::WithKeyboard { buttons, .. } => {
-                let buttons = buttons.iter()
-                    .map(|btn| InlineKeyboardButton::callback(btn.title.clone(), btn.data.to_data_string()));
-                let keyboard = InlineKeyboardMarkup::new(vec![buttons]);
-                Some(keyboard)
-            }
-            HandlerImplResult::OnlyText(_) => None
-        }
     }
 }
 

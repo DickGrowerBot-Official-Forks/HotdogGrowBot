@@ -35,11 +35,11 @@ COPY locales/ locales/
 COPY migrations/ migrations/
 COPY .sqlx/ .sqlx/
 COPY Cargo.* ./
-RUN cargo build --release && mv target/release/dick-grower-bot /dickGrowerBot
+RUN cargo build --release && mv target/release/hotdog-grow-bot /hotdogGrowBot
 
 FROM alpine:3.21
 RUN apk update && apk add --no-cache libgcc
-COPY --from=builder /dickGrowerBot /usr/local/bin/
+COPY --from=builder /hotdogGrowBot /usr/local/bin/
 # Import the user and group files from the builder
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
@@ -59,7 +59,6 @@ ARG HELP_ADMIN_CHAT_EN
 ARG HELP_GIT_REPO
 ARG CHATS_MERGING_ENABLED
 ARG TOP_UNLIMITED_ENABLED
-ARG MULTIPLE_LOANS_ENABLED
 ARG PVP_DEFAULT_BET
 ARG PVP_CHECK_ACCEPTOR_LENGTH
 ARG PVP_CALLBACK_LOCKS_ENABLED
@@ -72,8 +71,6 @@ ARG GROWTH_DOD_BONUS_MAX
 ARG NEWCOMERS_GRACE_DAYS
 ARG TOP_LIMIT
 ARG INACTIVITY_DAYS
-ARG HELP_PUSSIES_COEF
-ARG LOAN_PAYOUT_COEF
 ARG DOD_SELECTION_MODE
 ARG DOD_RICH_EXCLUSION_RATIO
 ARG ANNOUNCEMENT_MAX_SHOWS
@@ -82,8 +79,8 @@ ARG ANNOUNCEMENT_RU
 ARG ANNOUNCEMENT_IT
 ARG ANNOUNCEMENT_FA
 ARG ANNOUNCEMENT_ZH
-ENTRYPOINT [ "/usr/local/bin/dickGrowerBot" ]
+ENTRYPOINT [ "/usr/local/bin/hotdogGrowBot" ]
 
-LABEL org.opencontainers.image.source=https://github.com/kozalosev/DickGrowerBot
-LABEL org.opencontainers.image.description="Who has the biggest dick ever? A game bot for Telegram"
+LABEL org.opencontainers.image.source=https://github.com/DickGrowerBot-Official-Forks/HotdogGrowBot
+LABEL org.opencontainers.image.description="Grow your virtual hotdog in a Telegram group game"
 LABEL org.opencontainers.image.licenses='MIT+"Commons Clause" License Condition v1.0'

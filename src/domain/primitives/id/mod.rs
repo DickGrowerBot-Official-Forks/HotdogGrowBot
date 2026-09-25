@@ -5,7 +5,6 @@ use teloxide::types::{UserId as TeloxideUserId, User as TeloxideUser};
 use domain_types_macro::domain_type;
 use crate::*;
 
-id!(LoanId);
 positive_id!(UserId);
 
 #[domain_type]

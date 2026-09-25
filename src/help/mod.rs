@@ -1,7 +1,7 @@
 use rust_i18n::t;
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
-use crate::domain::primitives::{LanguageCode, Percentage, Username};
+use crate::domain::primitives::{LanguageCode, Username};
 use crate::domain::primitives::SupportedLanguage::{EN, RU, IT, FA, ZH};
 
 static EN_HELP: &str = include_str!("en.html");
@@ -41,13 +41,9 @@ pub struct Context {
     pub bot_name: Username,
     pub grow_min: String,
     pub grow_max: String,
-    pub other_bots: String,
-    pub admin_channel_ru: Username,
-    pub admin_channel_en: Username,
-    pub admin_chat_ru: Username,
-    pub admin_chat_en: Username,
+    pub admin_website: String,
+    pub admin_chat: String,
     pub git_repo: String,
-    pub help_pussies_percentage: Percentage,
 }
 
 pub fn render_help_messages(context: Context) -> Result<HelpContainer, tinytemplate::error::Error> {
@@ -64,4 +60,29 @@ pub fn render_help_messages(context: Context) -> Result<HelpContainer, tinytempl
         fa: tt.render("fa", &context)?,
         zh: tt.render("zh", &context)?,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn help_shows_configured_growth_range_in_inches() {
+        let context = Context {
+            bot_name: Username::from("hotdoggrow"),
+            grow_min: "-3".to_owned(),
+            grow_max: "12".to_owned(),
+            admin_website: "hotdogonrh.com".to_owned(),
+            admin_chat: "@HOTDOGonRH".to_owned(),
+            git_repo: "https://github.com/DickGrowerBot-Official-Forks/HotdogGrowBot".to_owned(),
+        };
+        let help = render_help_messages(context).expect("help templates should render");
+        assert!(help.en.contains("<b>-3</b> to <b>12</b> inches"));
+        assert!(help.ru.contains("<b>-3</b> до <b>12</b> дюймов"));
+        assert!(help.it.contains("<b>-3</b> a <b>12</b> pollici"));
+        assert!(help.fa.contains("<b>-3</b> تا <b>12</b> اینچ"));
+        assert!(help.zh.contains("<b>-3</b> 到 <b>12</b> 英寸"));
+        assert!(help.en.contains("Website: hotdogonrh.com"));
+        assert!(help.en.contains("Chat: @HOTDOGonRH"));
+    }
 }

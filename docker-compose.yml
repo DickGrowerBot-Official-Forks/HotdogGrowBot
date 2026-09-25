@@ -1,9 +1,9 @@
 version: "3.7"
 services:
-  DickGrowerBot:
+  hotdog-grow-bot:
     build: .
-    image: kozalosev/dickgrowerbot
-    container_name: dickgrowerbot
+    image: dickgrowerbot-official-forks:hotdoggrowbot
+    container_name: hotdoggrowbot
     restart: unless-stopped
     environment:
       - TELOXIDE_TOKEN
@@ -11,14 +11,11 @@ services:
       - WEBHOOK_URL
       - DATABASE_URL=postgres://${POSTGRES_USER:?error}:${POSTGRES_PASSWORD:?error}@${POSTGRES_HOST:?error}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:?error}
       - DATABASE_MAX_CONNECTIONS
-      - HELP_ADMIN_CHANNEL_RU
-      - HELP_ADMIN_CHANNEL_EN
-      - HELP_ADMIN_CHAT_RU
-      - HELP_ADMIN_CHAT_EN
+      - HELP_ADMIN_WEBSITE
+      - HELP_ADMIN_CHAT
       - HELP_GIT_REPO
       - CHATS_MERGING_ENABLED
       - TOP_UNLIMITED_ENABLED
-      - MULTIPLE_LOANS_ENABLED
       - PVP_DEFAULT_BET
       - PVP_CHECK_ACCEPTOR_LENGTH
       - PVP_CALLBACK_LOCKS_ENABLED
@@ -31,8 +28,6 @@ services:
       - NEWCOMERS_GRACE_DAYS
       - TOP_LIMIT
       - INACTIVITY_DAYS
-      - HELP_PUSSIES_COEF
-      - LOAN_PAYOUT_COEF
       - DOD_SELECTION_MODE
       - DOD_RICH_EXCLUSION_RATIO
       - ANNOUNCEMENT_MAX_SHOWS
@@ -53,7 +48,7 @@ services:
       - postgres
   postgres:
     image: postgres:14.5-alpine
-    container_name: dickgrowerbot-postgresql
+    container_name: hotdoggrowbot-postgresql
     environment:
       - POSTGRES_PORT
       - POSTGRES_DB

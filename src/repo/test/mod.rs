@@ -1,10 +1,8 @@
 mod users;
 mod dicks;
 mod chats;
-mod import;
-mod promo;
-mod loans;
 mod pvpstats;
+mod reset;
 mod stats;
 mod announcements;
 

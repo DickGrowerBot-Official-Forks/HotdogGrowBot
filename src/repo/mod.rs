@@ -1,9 +1,6 @@
 mod users;
 mod dicks;
 mod chats;
-mod import;
-mod promo;
-mod loans;
 mod pvpstats;
 mod stats;
 mod announcements;
@@ -17,9 +14,6 @@ use sqlx::postgres::PgQueryResult;
 pub use users::*;
 pub use dicks::*;
 pub use chats::*;
-pub use import::*;
-pub use promo::*;
-pub use loans::*;
 pub use pvpstats::*;
 pub use stats::*;
 pub use announcements::*;
@@ -32,9 +26,6 @@ pub struct Repositories {
     pub users: Users,
     pub dicks: Dicks,
     pub chats: Chats,
-    pub import: Import,
-    pub promo: Promo,
-    pub loans: Loans,
     pub announcements: Announcements,
     pub pvp_stats: BattleStatsRepo,
     pub personal_stats: PersonalStatsRepo,
@@ -46,9 +37,6 @@ impl Repositories {
             users: Users::new(db_conn.clone()),
             dicks: Dicks::new(db_conn.clone(), config.features),
             chats: Chats::new(db_conn.clone(), config.features),
-            import: Import::new(db_conn.clone()),
-            promo: Promo::new(db_conn.clone()),
-            loans: Loans::new(db_conn.clone(), config),
             announcements: Announcements::new(db_conn.clone(), config.announcements.clone()),
             pvp_stats: BattleStatsRepo::new(db_conn.clone(), config.features),
             personal_stats: PersonalStatsRepo::new(db_conn.clone()),

@@ -19,18 +19,15 @@ pub static CMD_GROW_COUNTER: Lazy<BothModesCounters> = Lazy::new(||
     BothModesCounters::new("command_grow_usage_total", "count of /grow invocations"));
 pub static CMD_TOP_COUNTER: Lazy<BothModesCounters> = Lazy::new(||
     BothModesCounters::new("command_top_usage_total", "count of /top invocations"));
-pub static CMD_LOAN_COUNTER: Lazy<BothModesComplexCommandCounters> = Lazy::new(||
-    BothModesComplexCommandCounters::new("command_loan_usage_total", "count of /loan invocations"));
+pub static CMD_RESET: Lazy<ComplexCommandCounters> = Lazy::new(||
+    ComplexCommandCounters::new("command_reset_usage_total", "count of /reset invocations and successful resets",
+                                ["invoked", "finished"]));
 pub static CMD_DOD_COUNTER: Lazy<BothModesCounters> = Lazy::new(||
     BothModesCounters::new("command_dick_of_day_usage_total", "count of /dick_of_day invocations"));
 pub static CMD_PVP_COUNTER: Lazy<BothModesCounters> = Lazy::new(||
     BothModesCounters::new("command_pvp_usage_total", "count of /pvp invocations"));
 pub static CMD_STATS: Lazy<BothModesCounters> = Lazy::new(||
     BothModesCounters::new("command_stats_usage_total", "count of /stats invocations"));
-pub static CMD_IMPORT: Lazy<ComplexCommandCounters> = Lazy::new(||
-    ComplexCommandCounters::new("command_import_usage_total", "count of /import invocations and successes", ["invoked", "finished"]));
-pub static CMD_PROMO: Lazy<DeepLinkedCommandsCounters> = Lazy::new(||
-    DeepLinkedCommandsCounters::new("command_promo_usage_total", "count of /promo invocations and successes"));
 
 pub fn init() -> axum::Router {
     force_registration();
@@ -59,12 +56,10 @@ fn force_registration() {
     Lazy::force(&CMD_PRIVACY_COUNTER);
     Lazy::force(&CMD_GROW_COUNTER);
     Lazy::force(&CMD_TOP_COUNTER);
-    Lazy::force(&CMD_LOAN_COUNTER);
+    Lazy::force(&CMD_RESET);
     Lazy::force(&CMD_DOD_COUNTER);
     Lazy::force(&CMD_PVP_COUNTER);
     Lazy::force(&CMD_STATS);
-    Lazy::force(&CMD_IMPORT);
-    Lazy::force(&CMD_PROMO);
 }
 
 pub struct Counter(IntCounter);
@@ -77,15 +72,6 @@ pub struct ComplexCommandCounters {
 pub struct BothModesCounters {
     pub chat: Counter,
     pub inline: Counter,
-}
-pub struct BothModesComplexCommandCounters {
-    pub invoked: BothModesCounters,
-    pub finished: Counter,
-}
-pub struct DeepLinkedCommandsCounters {
-    pub invoked_by_command: Counter,
-    pub invoked_by_deeplink: Counter,
-    pub finished: Counter,
 }
 
 impl Counter {
@@ -142,30 +128,6 @@ impl BothModesCounters {
         Self {
             chat: vec.counter(&["chat"]),
             inline: vec.counter(&["inline"]),
-        }
-    }
-}
-
-impl BothModesComplexCommandCounters {
-    fn new(name: &str, help: &str) -> Self {
-        let vec = CounterVec::new(name, help, &["state", "mode"]);
-        Self {
-            invoked: BothModesCounters {
-                chat: vec.counter(&["invoked", "chat"]),
-                inline: vec.counter(&["invoked", "inline"]),
-            },
-            finished: vec.counter(&["finished", "unknown"]),
-        }
-    }
-}
-
-impl DeepLinkedCommandsCounters {
-    fn new(name: &str, help: &str) -> Self {
-        let vec = CounterVec::new(name, help, &["state"]);
-        Self {
-            invoked_by_command: vec.counter(&["invoked_by_command"]),
-            invoked_by_deeplink: vec.counter(&["invoked_by_deeplink"]),
-            finished: vec.counter(&["finished"]),
         }
     }
 }

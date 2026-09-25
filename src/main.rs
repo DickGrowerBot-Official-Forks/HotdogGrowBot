@@ -11,13 +11,12 @@ use std::net::SocketAddr;
 use futures::future::join_all;
 use reqwest::Url;
 use rust_i18n::i18n;
-use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::prelude::*;
 use teloxide::dptree::deps;
 use teloxide::update_listeners::webhooks::{axum_to_router, Options};
 use teloxide::update_listeners::UpdateListener;
-use crate::handlers::{checks, HelpCommands, LoanCommands, PrivacyCommands, PromoCommandState, StartCommands};
-use crate::handlers::{DickCommands, DickOfDayCommands, ImportCommands, PromoCommands};
+use crate::handlers::{checks, HelpCommands, PrivacyCommands, ResetCommands, StartCommands};
+use crate::handlers::{DickCommands, DickOfDayCommands};
 use crate::handlers::pvp::{BattleCommands, BattleCommandsNoArgs};
 use crate::handlers::stats::StatsCommands;
 use crate::handlers::utils::locks::LockCallbackServiceFacade;
@@ -46,22 +45,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .branch(Update::filter_message().filter_command::<BattleCommands>().filter(checks::is_group_chat).branch(checks::reject_group_accounts()).endpoint(handlers::pvp::cmd_handler))
         .branch(Update::filter_message().filter_command::<BattleCommandsNoArgs>().filter(checks::is_group_chat).branch(checks::reject_group_accounts()).endpoint(handlers::pvp::cmd_handler_no_args))
         .branch(Update::filter_message().filter_command::<StatsCommands>().endpoint(handlers::stats::cmd_handler))
-        .branch(Update::filter_message().filter_command::<LoanCommands>().filter(checks::is_group_chat).branch(checks::reject_group_accounts()).endpoint(handlers::loan::cmd_handler))
-        .branch(Update::filter_message().filter_command::<ImportCommands>().filter(checks::is_group_chat).branch(checks::reject_group_accounts()).endpoint(handlers::import_cmd_handler))
-        .branch(Update::filter_message().filter_command::<PromoCommands>().filter(checks::is_not_group_chat).enter_dialogue::<Message, InMemStorage<PromoCommandState>, PromoCommandState>()
-            .branch(dptree::case![PromoCommandState::Start].endpoint(handlers::promo_cmd_handler)))
-        .branch(Update::filter_message().enter_dialogue::<Message, InMemStorage<PromoCommandState>, PromoCommandState>()
-            .branch(dptree::case![PromoCommandState::Requested].endpoint(handlers::promo_requested_handler)))
+        .branch(Update::filter_message().filter_command::<ResetCommands>().filter(checks::is_group_chat).endpoint(handlers::reset::cmd_handler))
         .branch(Update::filter_message().filter(checks::is_not_group_chat).endpoint(checks::handle_not_group_chat))
         .branch(Update::filter_inline_query().filter(checks::inline::is_group_chat).filter(handlers::pvp::inline_filter).endpoint(handlers::pvp::inline_handler))
-        .branch(Update::filter_inline_query().filter(handlers::promo_inline_filter).endpoint(handlers::promo_inline_handler))
         .branch(Update::filter_inline_query().filter(checks::inline::is_group_chat).endpoint(handlers::inline_handler))
         .branch(Update::filter_inline_query().filter(checks::inline::is_not_group_chat).endpoint(checks::inline::handle_not_group_chat))
         .branch(Update::filter_chosen_inline_result().filter(handlers::pvp::chosen_inline_result_filter).endpoint(handlers::pvp::inline_chosen_handler))
         .branch(Update::filter_chosen_inline_result().endpoint(handlers::inline_chosen_handler))
         .branch(Update::filter_callback_query().filter(handlers::page_callback_filter).endpoint(handlers::page_callback_handler))
         .branch(Update::filter_callback_query().filter(handlers::pvp::callback_filter).endpoint(handlers::pvp::callback_handler))
-        .branch(Update::filter_callback_query().filter(handlers::loan::callback_filter).endpoint(handlers::loan::callback_handler))
+        .branch(Update::filter_callback_query().filter(handlers::reset::callback_filter).endpoint(handlers::reset::callback_handler))
         .branch(Update::filter_callback_query().endpoint(handlers::callback_handler));
 
     let bot = Bot::from_env();
@@ -79,9 +72,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let me = bot.get_me().await?;
     let repos = repo::Repositories::new(&db_conn, &app_config);
-    let perks = handlers::perks::all(&db_conn, &app_config);
-    let incrementor = handlers::utils::Incrementor::from_env(&repos.dicks, perks);
-    let help_context = config::build_context_for_help_messages(me, &incrementor, &handlers::ORIGINAL_BOT_USERNAMES)?;
+    let incrementor = handlers::utils::Incrementor::from_env();
+    let help_context = config::build_context_for_help_messages(me, &incrementor)?;
     let help_container = help::render_help_messages(help_context)?;
     let battle_locker = LockCallbackServiceFacade::from_config(app_config.features);
 
@@ -100,8 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         incrementor,
         app_config,
         help_container,
-        battle_locker,
-        InMemStorage::<PromoCommandState>::new()
+        battle_locker
     ];
 
     match webhook_url {

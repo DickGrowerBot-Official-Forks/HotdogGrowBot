@@ -8,9 +8,7 @@ pub_use_modules!(
     username,
     ratio,
     langcode,
-    debt,
     numbers,
     length,
     hash,
-    pagination,
-    promo);
+    pagination);

@@ -2,7 +2,7 @@
 members = ["domain_types", "domain_types_macro"]
 
 [package]
-name = "dick-grower-bot"
+name = "hotdog-grow-bot"
 version = "0.1.0"
 edition = "2024"
 license-file = "LICENSE"
@@ -36,7 +36,6 @@ strum_macros = "0.28.0"
 derive_more = { version = "2.1.1", features = ["display", "from", "constructor", "error", "from_str", "add", "mul", "not", "add_assign", "mul_assign"] }
 anyhow = { version = "1.0.104", features = ["backtrace"] }
 # Other basic stuff
-regex = "1.13.1"
 rand = "0.10.2"
 chrono = { version = "0.4.45", features = [ "serde" ] }
 base64 = "0.22.1"
@@ -47,9 +46,7 @@ unicode-general-category = "1.1.0"
 # Rust specific stuff
 once_cell = "1.21.4"
 futures = "0.3.33"
-async-trait = "0.1.91"
 num-traits = "0.2.19"
-downcast-rs = "2.0.2"
 # Local subcrates
 domain_types = { version = "0.1.0", path = "domain_types" }
 domain_types_macro = { version = "0.1.0", path = "domain_types_macro" }
