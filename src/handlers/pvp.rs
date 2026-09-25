@@ -294,7 +294,6 @@ async fn pvp_impl_attack(p: BattleParams, initiator: UserId, acceptor: UserInfo,
         let battle_stats = p.repos.pvp_stats.send_battle_result(&p.chat_id.kind(), winner, loser, bet).await
             .inspect_err(|e| log::error!("couldn't send users' battle statistics for winner ({}) and loser ({}): {}", winner, loser, e))
             .ok()
-            .filter(|_| p.features.show_stats)
             .map(|BattleStats { winner: winner_stats, loser: loser_stats }| {
                 let mut stats_str = t!("commands.pvp.results.stats.text", locale = &p.lang_code,
                     winner_win_rate = winner_stats.win_rate_percentage(), loser_win_rate = loser_stats.win_rate_percentage(),

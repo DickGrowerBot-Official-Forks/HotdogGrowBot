@@ -47,7 +47,6 @@ commands:
     description: "Statistics"
     length: "Length: <b>%{length}″</b>\nPosition in the top: <b>%{pos}</b>"
     pvp: "Win rate: <b>%{win_rate}</b>.\nFights: <b>%{battles}</b>.\nWins: <b>%{wins}</b>.\nMax win streak: <b>%{win_streak}</b>.\nAcquired length: <b>%{acquired}″</b>.\nLost length: <b>%{lost}″</b>."
-    notice: "The collection of statistics started on July 2, 2024."
     personal: "<i>Your personal statistics:</i>\n— Number of the chats in which you play: <b>%{chats}</b>.\n— Maximum length: <b>%{max_length}″</b>.\n— Sum of hotdogs across all the chats: <b>%{total_length}″</b>."
   reset:
     description: "Reset every hotdog length in this chat"

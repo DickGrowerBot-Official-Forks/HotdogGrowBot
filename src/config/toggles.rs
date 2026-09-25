@@ -33,8 +33,6 @@ impl Default for FeatureToggles {
 #[derive(Copy, Clone, Default)]
 pub struct BattlesFeatureToggles {
     pub check_acceptor_length: bool,
-    pub show_stats: bool,
-    pub show_stats_notice: bool,
 }
 
 #[derive(Clone, Default)]

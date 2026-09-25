@@ -29,16 +29,12 @@ impl AppConfig {
         let chats_merging = get_env_value_or_default("CHATS_MERGING_ENABLED", false);
         let pvp_default_bet = get_env_value_or_default("PVP_DEFAULT_BET", Bet::literal(1));
         let check_acceptor_length = get_env_value_or_default("PVP_CHECK_ACCEPTOR_LENGTH", false);
-        let show_stats = get_env_value_or_default("PVP_STATS_SHOW", true);
-        let show_stats_notice = get_env_value_or_default("PVP_STATS_SHOW_NOTICE", true);
         Self {
             features: FeatureToggles {
                 chats_merging,
                 dod_selection_mode,
                 pvp: BattlesFeatureToggles {
                     check_acceptor_length,
-                    show_stats,
-                    show_stats_notice,
                 }
             },
             top_limit,

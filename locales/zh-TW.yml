@@ -38,7 +38,6 @@ commands:
   stats:
     length: "長度: <b>%{length}″</b>\n在排行榜上的位置: <b>%{pos}</b>"
     pvp: "勝率: <b>%{win_rate}</b>。\n戰鬥次數: <b>%{battles}</b>。\n勝利次數: <b>%{wins}</b>。\n最大連勝: <b>%{win_streak}</b>。\n獲得長度: <b>%{acquired}″</b>。\n失去長度: <b>%{lost}″</b>。"
-    notice: "統計收集從2024年7月2日開始。"
     personal: "<i>你的個人統計:</i>\n— 你參與的遊戲聊天數量: <b>%{chats}</b>。\n— 最大長度: <b>%{max_length}″</b>。\n— 所有聊天中的熱狗總長度: <b>%{total_length}″</b>。"
   reset:
     description: "重設本群所有熱狗長度"

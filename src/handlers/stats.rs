@@ -5,7 +5,6 @@ use teloxide::macros::BotCommands;
 use teloxide::prelude::Message;
 use crate::handlers::{FromRefs, HandlerResult, reply_html};
 use crate::{metrics, reply_html, repo};
-use crate::config::{AppConfig, BattlesFeatureToggles};
 use crate::domain::primitives::{LanguageCode, UserId};
 use crate::domain::objects::WinRateAware;
 
@@ -16,25 +15,19 @@ pub enum StatsCommands {
     Stats
 }
 
-pub async fn cmd_handler(bot: Bot, msg: Message, repos: repo::Repositories, app_config: AppConfig) -> HandlerResult {
+pub async fn cmd_handler(bot: Bot, msg: Message, repos: repo::Repositories) -> HandlerResult {
     metrics::CMD_STATS.chat.inc();
-    
-    let features = app_config.features.pvp;
-    if features.show_stats {
-        let from = msg.from.as_ref().ok_or(anyhow!("unexpected absence of a FROM field"))?;
-        let chat_id = msg.chat.id.into();
-        let from_refs = FromRefs(from, &chat_id);
 
-        let answer = if msg.chat.is_private() {
-            personal_stats_impl(&repos, from_refs).await?
-        } else {
-            chat_stats_impl(&repos, from_refs, features).await?
-        };
-
-        reply_html!(bot, msg, answer);
+    let from = msg.from.as_ref().ok_or(anyhow!("unexpected absence of a FROM field"))?;
+    let chat_id = msg.chat.id.into();
+    let from_refs = FromRefs(from, &chat_id);
+    let answer = if msg.chat.is_private() {
+        personal_stats_impl(&repos, from_refs).await?
     } else {
-        log::info!("ignoring the /stats command since it's disabled");
-    }
+        chat_stats_impl(&repos, from_refs).await?
+    };
+
+    reply_html!(bot, msg, answer);
     Ok(())
 }
 
@@ -45,7 +38,7 @@ async fn personal_stats_impl(repos: &repo::Repositories, from_refs: FromRefs<'_>
             chats = stats.chats, max_length = stats.max_length, total_length = stats.total_length).to_string())
 }
 
-pub(crate) async fn chat_stats_impl(repos: &repo::Repositories, from_refs: FromRefs<'_>, features: BattlesFeatureToggles) -> anyhow::Result<String> {
+pub(crate) async fn chat_stats_impl(repos: &repo::Repositories, from_refs: FromRefs<'_>) -> anyhow::Result<String> {
     let lang_code = LanguageCode::from_user(from_refs.0);
     let (length, position) = repos.dicks.fetch_dick(UserId::from(from_refs.0), &from_refs.1.kind()).await?
         .map(|dick| (dick.length, dick.position.unwrap_or_default()))
@@ -56,12 +49,6 @@ pub(crate) async fn chat_stats_impl(repos: &repo::Repositories, from_refs: FromR
         .map(|stats| t!("commands.stats.pvp", locale = &lang_code,
             win_rate = stats.win_rate_percentage(), win_streak = stats.win_streak_max,
             battles = stats.battles_total, wins = stats.battles_won,
-            acquired = stats.acquired_length, lost = stats.lost_length))
-        .map(|s| if features.show_stats_notice {
-            let notice = t!("commands.stats.notice", locale = &lang_code);
-            format!("{}\n\n<i>{}</i>", s, notice)
-        } else {
-            s.to_string()
-        })?;
+            acquired = stats.acquired_length, lost = stats.lost_length))?;
     Ok(format!("{length_stats}\n\n{pvp_stats}"))
 }

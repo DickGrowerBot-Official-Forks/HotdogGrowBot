@@ -47,7 +47,6 @@ commands:
     description: "Statistiche"
     length: "Lunghezza: <b>%{length}″</b>\nPosizione in classifica: <b>%{pos}</b>"
     pvp: "Tasso di vittoria: <b>%{win_rate}</b>.\nSfide: <b>%{battles}</b>.\nVittorie: <b>%{wins}</b>.\nSerie di vittorie massima: <b>%{win_streak}</b>.\nLunghezza acquisita: <b>%{acquired}″</b>.\nLunghezza persa: <b>%{lost}″</b>."
-    notice: "La raccolta delle statistiche è iniziata il 2 Luglio 2024."
     personal: "<i>Le tue statistiche personali:</i>\n— Numero di gruppi in cui giochi: <b>%{chats}</b>.\n— Lunghezza massima raggiunta: <b>%{max_length}″</b>.\n— Somma dei tuoi hot dog in tutti i gruppi: <b>%{total_length}″</b>."
   reset:
     description: "Azzera tutte le lunghezze della chat"

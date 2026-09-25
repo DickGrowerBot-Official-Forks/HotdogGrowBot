@@ -70,7 +70,7 @@ impl InlineCommand {
             },
             InlineCommand::Stats => {
                 metrics::CMD_STATS.inline.inc();
-                stats::chat_stats_impl(repos, from_refs, config.features.pvp)
+                stats::chat_stats_impl(repos, from_refs)
                     .await
                     .map(InlineResult::text)
             },
