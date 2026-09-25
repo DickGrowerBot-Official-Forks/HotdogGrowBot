@@ -1,7 +1,7 @@
 [@hotdoggrow](https://t.me/hotdoggrow)
 ========================================
 
-[![CI Build](https://github.com/DickGrowerBot-Official-Forks/HotdogGrowBot/actions/workflows/ci-build.yaml/badge.svg?branch=main&event=push)](https://github.com/DickGrowerBot-Official-Forks/HotdogGrowBot/actions/workflows/ci-build.yaml) [![@hotdoggrow MAU](https://tgbotmau.quoi.dev/api/bot/hotdoggrow/mau/badge?style=flat "@hotdoggrow MAU")](https://tgbotmau.quoi.dev/?bot=hotdoggrow)
+[![CI Build](https://github.com/DickGrowerBot-Official-Forks/HotdogGrowBot/actions/workflows/ci-build.yaml/badge.svg?branch=fork-main&event=push)](https://github.com/DickGrowerBot-Official-Forks/HotdogGrowBot/actions/workflows/ci-build.yaml) [![@hotdoggrow MAU](https://tgbotmau.quoi.dev/api/bot/hotdoggrow/mau/badge?style=flat "@hotdoggrow MAU")](https://tgbotmau.quoi.dev/?bot=hotdoggrow)
 
 A game bot for group chats that lets its users grow virtual hotdogs every day by a random number of inches (including negative values) and compete with friends and other chat members.
 
