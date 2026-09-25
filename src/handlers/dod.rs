@@ -84,10 +84,7 @@ pub(crate) async fn dick_of_day_impl(cfg: config::AppConfig, repos: &repo::Repos
         },
         None => t!("commands.dod.no_candidates", locale = &lang_code).to_string()
     };
-    let announcement = repos.announcements.get_new(&chat_id.kind(), &lang_code).await?
-        .map(|announcement| format!("\n\n<i>{announcement}</i>"))
-        .unwrap_or_default();
-    Ok(format!("{answer}{announcement}"))
+    Ok(answer)
 }
 
 fn disabled_link_preview() -> LinkPreviewOptions {

@@ -1,7 +1,4 @@
 use domain_types_macro::domain_type;
-use crate::positive_number;
-
-positive_number!(Counter, i16);
 
 #[domain_type(
     number,

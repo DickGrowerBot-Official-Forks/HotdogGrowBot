@@ -3,7 +3,6 @@ mod dicks;
 mod chats;
 mod pvpstats;
 mod stats;
-mod announcements;
 
 #[cfg(test)]
 pub(crate) mod test;
@@ -16,7 +15,6 @@ pub use dicks::*;
 pub use chats::*;
 pub use pvpstats::*;
 pub use stats::*;
-pub use announcements::*;
 use crate::config;
 use crate::config::DatabaseConfig;
 use crate::domain::primitives::chat::ChatIdKind;
@@ -26,7 +24,6 @@ pub struct Repositories {
     pub users: Users,
     pub dicks: Dicks,
     pub chats: Chats,
-    pub announcements: Announcements,
     pub pvp_stats: BattleStatsRepo,
     pub personal_stats: PersonalStatsRepo,
 }
@@ -37,7 +34,6 @@ impl Repositories {
             users: Users::new(db_conn.clone()),
             dicks: Dicks::new(db_conn.clone(), config.features),
             chats: Chats::new(db_conn.clone(), config.features),
-            announcements: Announcements::new(db_conn.clone(), config.announcements.clone()),
             pvp_stats: BattleStatsRepo::new(db_conn.clone(), config.features),
             personal_stats: PersonalStatsRepo::new(db_conn.clone()),
         }

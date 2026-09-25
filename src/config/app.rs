@@ -1,9 +1,7 @@
 use reqwest::Url;
 use crate::config::env::*;
 use crate::config::toggles::*;
-use crate::config::announcements::*;
 use crate::domain::primitives::{Bet, DaysCount, Limit, Ratio};
-use crate::domain::primitives::SupportedLanguage::{EN, RU, IT, FA, ZH};
 
 #[derive(Clone)]
 #[cfg_attr(test, derive(Default))]
@@ -13,7 +11,6 @@ pub struct AppConfig {
     pub inactivity_days: DaysCount,
     pub dod_rich_exclusion_ratio: Option<Ratio>,
     pub pvp_default_bet: Bet,
-    pub announcements: AnnouncementsConfig,
     pub command_toggles: CachedEnvToggles,
 }
 
@@ -34,12 +31,6 @@ impl AppConfig {
         let check_acceptor_length = get_env_value_or_default("PVP_CHECK_ACCEPTOR_LENGTH", false);
         let show_stats = get_env_value_or_default("PVP_STATS_SHOW", true);
         let show_stats_notice = get_env_value_or_default("PVP_STATS_SHOW_NOTICE", true);
-        let announcement_max_shows = get_optional_env_value("ANNOUNCEMENT_MAX_SHOWS");
-        let announcement_en = get_optional_env_value("ANNOUNCEMENT_EN");
-        let announcement_ru = get_optional_env_value("ANNOUNCEMENT_RU");
-        let announcement_it = get_optional_env_value("ANNOUNCEMENT_IT");
-        let announcement_fa = get_optional_env_value("ANNOUNCEMENT_FA");
-        let announcement_zh = get_optional_env_value("ANNOUNCEMENT_ZH");
         Self {
             features: FeatureToggles {
                 chats_merging,
@@ -54,19 +45,6 @@ impl AppConfig {
             inactivity_days,
             dod_rich_exclusion_ratio,
             pvp_default_bet,
-            announcements: AnnouncementsConfig {
-                max_shows: announcement_max_shows,
-                announcements: [
-                    (EN, announcement_en),
-                    (RU, announcement_ru),
-                    (IT, announcement_it),
-                    (FA, announcement_fa),
-                    (ZH, announcement_zh),
-                ].map(|(lc, text)| (lc, Announcement::new(text)))
-                    .into_iter()
-                    .filter_map(|(lc, mb_ann)| mb_ann.map(|ann| (lc, ann)))
-                    .collect()
-            },
             command_toggles: Default::default(),
         }
     }

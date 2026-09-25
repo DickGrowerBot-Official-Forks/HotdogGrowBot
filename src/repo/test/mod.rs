@@ -4,7 +4,6 @@ mod chats;
 mod pvpstats;
 mod reset;
 mod stats;
-mod announcements;
 
 use std::str::FromStr;
 use reqwest::Url;
