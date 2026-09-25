@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE Dicks\n                SET length = 0,\n                    updated_at = current_date - interval '1 day',\n                    bonus_attempts = bonus_attempts + 1\n                WHERE chat_id = $1 AND (length <> 0 OR date(updated_at) = current_date)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c660ea731fda5e63c7bc89df2bfda687c725ead3674108f4b593418fb38e5112"
+}

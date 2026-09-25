@@ -190,19 +190,33 @@ impl Dicks {
         Ok(())
     }
 
-    // TODO: Confirm whether reset should preserve leaderboard entries by setting length to zero instead of deleting rows.
-    // An UPDATE must also define daily-attempt behavior and account for the check_and_update_dicks_timestamp trigger.
     pub async fn reset_chat(&self, chat_id: &ChatIdKind) -> anyhow::Result<u64> {
-        let deleted_dicks = sqlx::query!(
-            "DELETE FROM Dicks WHERE chat_id = (
-                SELECT id FROM Chats WHERE chat_id = $1::bigint OR chat_instance = $1::text
-            )",
-            chat_id.value() as String
+        let Some(chat) = self.chats.get_chat(chat_id.clone()).await? else {
+            return Ok(0);
+        };
+        let internal_chat_id = InternalChatId::new(chat.internal_id);
+
+        let mut tx = self.pool.begin().await?;
+        let reset_dicks = sqlx::query!(
+            "UPDATE Dicks
+                SET length = 0,
+                    updated_at = current_date - interval '1 day',
+                    bonus_attempts = bonus_attempts + 1
+                WHERE chat_id = $1 AND (length <> 0 OR date(updated_at) = current_date)",
+            internal_chat_id as InternalChatId
         )
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await
-            .context(format!("couldn't reset hotdog lengths for {chat_id}"))?
+            .context(format!("couldn't reset hotdog lengths and growth attempts for {chat_id}"))?
             .rows_affected();
-        Ok(deleted_dicks)
+
+        sqlx::query!("DELETE FROM Dick_of_Day WHERE chat_id = $1 AND created_at = current_date",
+                internal_chat_id as InternalChatId)
+            .execute(&mut *tx)
+            .await
+            .context(format!("couldn't reset today's hotdog of the day for {chat_id}"))?;
+
+        tx.commit().await?;
+        Ok(reset_dicks)
     }
 }
