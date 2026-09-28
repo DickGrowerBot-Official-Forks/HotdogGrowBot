@@ -22,8 +22,8 @@ pub static CMD_TOP_COUNTER: Lazy<BothModesCounters> = Lazy::new(||
 pub static CMD_RESET: Lazy<ComplexCommandCounters> = Lazy::new(||
     ComplexCommandCounters::new("command_reset_usage_total", "count of /reset invocations and successful resets",
                                 ["invoked", "finished"]));
-pub static CMD_DOD_COUNTER: Lazy<BothModesCounters> = Lazy::new(||
-    BothModesCounters::new("command_dick_of_day_usage_total", "count of /dick_of_day invocations"));
+pub static CMD_HOD_COUNTER: Lazy<BothModesCounters> = Lazy::new(||
+    BothModesCounters::new("command_hotdog_of_day_usage_total", "count of /hotdog_of_day invocations"));
 pub static CMD_PVP_COUNTER: Lazy<BothModesCounters> = Lazy::new(||
     BothModesCounters::new("command_pvp_usage_total", "count of /pvp invocations"));
 pub static CMD_STATS: Lazy<BothModesCounters> = Lazy::new(||
@@ -57,7 +57,7 @@ fn force_registration() {
     Lazy::force(&CMD_GROW_COUNTER);
     Lazy::force(&CMD_TOP_COUNTER);
     Lazy::force(&CMD_RESET);
-    Lazy::force(&CMD_DOD_COUNTER);
+    Lazy::force(&CMD_HOD_COUNTER);
     Lazy::force(&CMD_PVP_COUNTER);
     Lazy::force(&CMD_STATS);
 }

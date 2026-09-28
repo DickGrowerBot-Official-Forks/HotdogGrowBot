@@ -17,14 +17,14 @@ const DOD_ALREADY_CHOSEN_SQL_CODE: &str = "GD0E2";
 #[derive(BotCommands, Clone)]
 #[command(rename_rule = "snake_case")]
 pub enum DickOfDayCommands {
-    #[command(description = "dod")]
+    #[command(description = "hod")]
     HotdogOfDay,
     Hod,
 }
 
 pub async fn dod_cmd_handler(bot: Bot, msg: Message,
                              cfg: config::AppConfig, repos: repo::Repositories, incr: Incrementor) -> HandlerResult {
-    metrics::CMD_DOD_COUNTER.chat.inc();
+    metrics::CMD_HOD_COUNTER.chat.inc();
     let from = msg.from.as_ref().ok_or(anyhow!("unexpected absence of a FROM field"))?;
     let chat_id = msg.chat.id.into();
     let from_refs = FromRefs(from, &chat_id);
@@ -55,10 +55,10 @@ pub(crate) async fn dick_of_day_impl(cfg: config::AppConfig, repos: &repo::Repos
             let dod_result = repos.dicks.set_dod_winner(chat_id, winner.uid, increment).await;
             let main_part = match dod_result {
                 Ok(Some(GrowthResult { new_length, pos_in_top })) => {
-                    let answer = t!("commands.dod.result", locale = &lang_code,
+                    let answer = t!("commands.hod.result", locale = &lang_code,
                         uid = winner.uid, name = winner.name.escaped(), growth = increment, length = new_length);
                     if let Some(pos) = pos_in_top {
-                        let position = t!("commands.dod.position", locale = &lang_code, pos = pos);
+                        let position = t!("commands.hod.position", locale = &lang_code, pos = pos);
                         format!("{answer}\n{position}")
                     } else {
                         answer.to_string()
@@ -67,13 +67,13 @@ pub(crate) async fn dick_of_day_impl(cfg: config::AppConfig, repos: &repo::Repos
                 Ok(None) => {
                     log::error!("there was an attempt to set a non-existent dick as a winner (UserID={}, ChatId={})",
                         winner.uid, chat_id);
-                    t!("commands.dod.no_candidates", locale = &lang_code).to_string()
+                    t!("commands.hod.no_candidates", locale = &lang_code).to_string()
                 }
                 Err(e) => {
                     match e.downcast::<sqlx::Error>()? {
                         sqlx::Error::Database(e)
                         if e.code() == Some(Cow::Borrowed(DOD_ALREADY_CHOSEN_SQL_CODE)) => {
-                            t!("commands.dod.already_chosen", locale = &lang_code, name = e.message()).to_string()
+                            t!("commands.hod.already_chosen", locale = &lang_code, name = e.message()).to_string()
                         }
                         e => Err(e)?
                     }
@@ -82,7 +82,7 @@ pub(crate) async fn dick_of_day_impl(cfg: config::AppConfig, repos: &repo::Repos
             let time_left_part = utils::date::get_time_till_next_day_string(&lang_code);
             format!("{main_part}{time_left_part}")
         },
-        None => t!("commands.dod.no_candidates", locale = &lang_code).to_string()
+        None => t!("commands.hod.no_candidates", locale = &lang_code).to_string()
     };
     Ok(answer)
 }

@@ -18,7 +18,7 @@ commands:
     ending: "<i>[+] 表示一个玩家今天还没有增长他的热狗。</i>"
     ending_inactive: "<i>[~] 表示一个玩家超过 %{days} 天没有增长他的热狗了。</i>"
     empty: "还没有人加入游戏 :("
-  dod:
+  hod:
     description: "选举今日热狗"
     result: "今日热狗是<b><a href=\"tg://user?id=%{uid}\">%{name}</a></b>！\n\n他的热狗增长了<b>%{growth}″</b>，现在长度为<b>%{length}″</b>。"
     position: "他在排行榜上的位置是<b>%{pos}</b>。"

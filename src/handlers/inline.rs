@@ -63,7 +63,7 @@ impl InlineCommand {
                     })
             },
             InlineCommand::DickOfDay => {
-                metrics::CMD_DOD_COUNTER.inline.inc();
+                metrics::CMD_HOD_COUNTER.inline.inc();
                 dod::dick_of_day_impl(config, repos, incr, from_refs)
                     .await
                     .map(InlineResult::text)

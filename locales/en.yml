@@ -18,7 +18,7 @@ commands:
     ending: "<i>[+] means a grower hasn't grown his hotdog today yet.</i>"
     ending_inactive: "<i>[~] means a grower hasn't grown his hotdog for more than %{days} days.</i>"
     empty: "No one is in the game yet :("
-  dod:
+  hod:
     description: "Elect the Hotdog of the Day"
     result: "The Hotdog of the Day is <b><a href=\"tg://user?id=%{uid}\">%{name}</a></b>!\n\nHis hotdog has become longer for <b>%{growth}″</b> and is <b>%{length}″</b> long now."
     position: "His position in the top is <b>%{pos}</b>."

@@ -18,7 +18,7 @@ commands:
     ending: "<i>[+] significa che un giocatore non ha ancora fatto crescere il suo hot dog oggi.</i>"
     ending_inactive: "<i>[~] significa che un giocatore non ha fatto crescere il suo hot dog per più di %{days} giorni.</i>"
     empty: "Nessuno sta giocando :("
-  dod:
+  hod:
     description: "Eleggi l'Hot dog del Giorno"
     result: "L'Hot dog del Giorno è <b><a href=\"tg://user?id=%{uid}\">%{name}</a></b>!\n\nIl suo hot dog è cresciuto di <b>%{growth}″</b> e ora è lungo <b>%{length}″</b>."
     position: "La sua posizione nella classifica è <b>%{pos}</b>."
