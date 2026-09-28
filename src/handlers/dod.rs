@@ -18,8 +18,8 @@ const DOD_ALREADY_CHOSEN_SQL_CODE: &str = "GD0E2";
 #[command(rename_rule = "snake_case")]
 pub enum DickOfDayCommands {
     #[command(description = "dod")]
-    DickOfDay,
-    Dod,
+    HotdogOfDay,
+    Hod,
 }
 
 pub async fn dod_cmd_handler(bot: Bot, msg: Message,
